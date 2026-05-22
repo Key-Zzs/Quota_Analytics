@@ -1,6 +1,6 @@
 # Quota Data Sources
 
-Stage 1 only ships `MockQuotaDataSource`.
+Stage 2 ships `MockQuotaDataSource` and `LocalQuotaDataSource`.
 
 Future sources are intentionally placeholders until their safety boundaries are
 designed and reviewed:
@@ -10,5 +10,5 @@ designed and reviewed:
 - `BrowserExtensionQuotaDataSource`: possible browser-side companion, not implemented.
 - `DesktopAgentQuotaDataSource`: possible desktop helper, not implemented.
 
-No Stage 1 code reads browser cookies, tokens, passwords, OpenAI pages, ChatGPT
+No Stage 2 code reads browser cookies, tokens, passwords, OpenAI pages, ChatGPT
 pages, Codex pages, or real usage.

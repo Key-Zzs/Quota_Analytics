@@ -33,4 +33,9 @@ class MockQuotaDataSource {
     _latestSnapshot = snapshot;
     return snapshot;
   }
+
+  void reset() {
+    _latestSnapshot = null;
+    _refreshCount = 0;
+  }
 }

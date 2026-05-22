@@ -22,7 +22,7 @@ class QuotaEmptyView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Refresh to create an in-memory Stage 1 snapshot.',
+              'Refresh to create and persist a mock Stage 2 snapshot.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

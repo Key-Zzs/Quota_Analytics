@@ -10,4 +10,13 @@ extension ParserConfidenceLabel on ParserConfidence {
       ParserConfidence.notApplicable => 'not applicable',
     };
   }
+
+  String get storageKey => name;
+}
+
+ParserConfidence parserConfidenceFromStorageKey(String? value) {
+  return ParserConfidence.values.firstWhere(
+    (confidence) => confidence.storageKey == value,
+    orElse: () => ParserConfidence.notApplicable,
+  );
 }

@@ -1,5 +1,5 @@
 name: quota_analytics
-description: "Stage 1 mock UI for an unofficial quota analytics app."
+description: "Stage 2 mock quota analytics app with local persistence."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

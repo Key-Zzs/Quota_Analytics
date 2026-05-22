@@ -19,4 +19,13 @@ extension QuotaSourceLabel on QuotaSource {
       QuotaSource.manualPlaceholder => 'Manual placeholder',
     };
   }
+
+  String get storageKey => name;
+}
+
+QuotaSource quotaSourceFromStorageKey(String? value) {
+  return QuotaSource.values.firstWhere(
+    (source) => source.storageKey == value,
+    orElse: () => QuotaSource.mock,
+  );
 }

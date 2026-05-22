@@ -3,15 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'core/constants/app_constants.dart';
+import 'core/storage/json_storage.dart';
+import 'core/storage/shared_preferences_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/time/clock.dart';
 import 'features/debug/presentation/pages/debug_page.dart';
+import 'features/quota/data/datasources/local_quota_datasource.dart';
 import 'features/quota/data/datasources/mock_quota_datasource.dart';
-import 'features/quota/data/repositories/mock_quota_repository.dart';
+import 'features/quota/data/repositories/persistent_quota_repository.dart';
 import 'features/quota/domain/repositories/quota_repository.dart';
 import 'features/quota/presentation/controllers/quota_controller.dart';
 import 'features/quota/presentation/pages/quota_home_page.dart';
-import 'features/settings/data/mock_settings_repository.dart';
+import 'features/settings/data/datasources/local_settings_datasource.dart';
+import 'features/settings/data/repositories/local_settings_repository.dart';
+import 'features/settings/domain/repositories/settings_repository.dart';
+import 'features/settings/presentation/controllers/settings_controller.dart';
 import 'features/settings/presentation/pages/settings_page.dart';
 
 class QuotaAnalyticsApp extends StatelessWidget {
@@ -23,7 +29,7 @@ class QuotaAnalyticsApp extends StatelessWidget {
   });
 
   final QuotaRepository? quotaRepository;
-  final MockSettingsRepository? settingsRepository;
+  final SettingsRepository? settingsRepository;
   final Clock? clock;
 
   @override
@@ -51,7 +57,7 @@ class QuotaShell extends StatefulWidget {
   });
 
   final QuotaRepository? quotaRepository;
-  final MockSettingsRepository? settingsRepository;
+  final SettingsRepository? settingsRepository;
   final Clock? clock;
 
   @override
@@ -59,42 +65,73 @@ class QuotaShell extends StatefulWidget {
 }
 
 class _QuotaShellState extends State<QuotaShell> {
-  late final QuotaController _quotaController;
-  late final MockSettingsRepository _settingsRepository;
+  late final Future<_AppControllers> _controllersFuture;
+  _AppControllers? _controllers;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    final effectiveClock = widget.clock ?? const SystemClock();
-    final repository =
-        widget.quotaRepository ??
-        MockQuotaRepository(MockQuotaDataSource(clock: effectiveClock));
-
-    _quotaController = QuotaController(repository: repository);
-    _settingsRepository = widget.settingsRepository ?? MockSettingsRepository();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_quotaController.loadLatestSnapshot());
-    });
+    _controllersFuture = _createControllers();
   }
 
   @override
   void dispose() {
-    _quotaController.dispose();
+    _controllers?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<_AppControllers>(
+      future: _controllersFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(title: const Text(AppConstants.appName)),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Unable to initialize local persistence: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          );
+        }
+
+        final controllers = snapshot.data;
+        if (controllers == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text(AppConstants.appName)),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return _buildShell(context, controllers);
+      },
+    );
+  }
+
+  Widget _buildShell(BuildContext context, _AppControllers controllers) {
+    final quotaController = controllers.quotaController;
+    final settingsController = controllers.settingsController;
     final pages = <Widget>[
-      QuotaHomePage(controller: _quotaController),
-      SettingsPage(repository: _settingsRepository),
-      DebugPage(controller: _quotaController),
+      QuotaHomePage(controller: quotaController),
+      SettingsPage(
+        controller: settingsController,
+        onClearLocalData: _clearAllLocalData,
+      ),
+      DebugPage(
+        controller: quotaController,
+        settingsController: settingsController,
+        onClearLocalData: _clearAllLocalData,
+      ),
     ];
 
     return AnimatedBuilder(
-      animation: _quotaController,
+      animation: quotaController,
       builder: (context, _) {
         return Scaffold(
           appBar: AppBar(
@@ -103,9 +140,9 @@ class _QuotaShellState extends State<QuotaShell> {
               if (_selectedIndex == 0)
                 IconButton(
                   tooltip: 'Refresh mock quota',
-                  onPressed: _quotaController.isLoading
+                  onPressed: quotaController.isLoading
                       ? null
-                      : () => unawaited(_quotaController.refresh()),
+                      : () => unawaited(quotaController.refresh()),
                   icon: const Icon(Icons.refresh),
                 ),
             ],
@@ -141,11 +178,78 @@ class _QuotaShellState extends State<QuotaShell> {
     );
   }
 
+  Future<_AppControllers> _createControllers() async {
+    final effectiveClock = widget.clock ?? const SystemClock();
+    final storage = await _createStorageIfNeeded();
+    final quotaRepository =
+        widget.quotaRepository ??
+        PersistentQuotaRepository(
+          mockDataSource: MockQuotaDataSource(clock: effectiveClock),
+          localDataSource: LocalQuotaDataSource(
+            storage: storage!,
+            clock: effectiveClock,
+          ),
+        );
+    final settingsRepository =
+        widget.settingsRepository ??
+        LocalSettingsRepository(
+          dataSource: LocalSettingsDataSource(
+            storage: storage!,
+            clock: effectiveClock,
+          ),
+          clock: effectiveClock,
+        );
+
+    final controllers = _AppControllers(
+      quotaController: QuotaController(repository: quotaRepository),
+      settingsController: SettingsController(repository: settingsRepository),
+    );
+    _controllers = controllers;
+
+    await Future.wait([
+      controllers.quotaController.loadLatestSnapshot(),
+      controllers.settingsController.load(),
+    ]);
+
+    return controllers;
+  }
+
+  Future<JsonStorage?> _createStorageIfNeeded() async {
+    if (widget.quotaRepository != null && widget.settingsRepository != null) {
+      return null;
+    }
+    return SharedPreferencesStorage.create();
+  }
+
+  Future<void> _clearAllLocalData() async {
+    final controllers = _controllers;
+    if (controllers == null) {
+      return;
+    }
+    await controllers.quotaController.clearLocalData();
+    await controllers.settingsController.clear();
+  }
+
   String _titleForIndex(int index) {
     return switch (index) {
       0 => AppConstants.appName,
       1 => 'Settings',
       _ => 'Debug',
     };
+  }
+}
+
+class _AppControllers {
+  const _AppControllers({
+    required this.quotaController,
+    required this.settingsController,
+  });
+
+  final QuotaController quotaController;
+  final SettingsController settingsController;
+
+  void dispose() {
+    quotaController.dispose();
+    settingsController.dispose();
   }
 }

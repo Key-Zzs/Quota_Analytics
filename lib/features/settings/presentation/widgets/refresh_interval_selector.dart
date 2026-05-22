@@ -15,6 +15,7 @@ class RefreshIntervalSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<RefreshInterval>(
+      key: ValueKey(selected.storageKey),
       initialValue: selected,
       decoration: const InputDecoration(
         labelText: 'Refresh interval',

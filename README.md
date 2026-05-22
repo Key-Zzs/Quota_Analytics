@@ -8,19 +8,23 @@ usage limits, refresh windows, remaining quota, and quota status.
 This is an unofficial independent project. It is not affiliated with, endorsed
 by, or maintained by OpenAI, ChatGPT, or Codex.
 
-Stage 1 uses mock data only. The app does not access real GPT, ChatGPT, OpenAI,
-or Codex accounts, does not read cookies, tokens, passwords, browser storage, or
-credentials, and does not provide an official quota API.
+Stage 2 uses mock data plus local persistence only. The app does not access real
+GPT, ChatGPT, OpenAI, or Codex accounts, does not read cookies, tokens,
+passwords, browser storage, or credentials, and does not provide an official
+quota API.
 
 ## Current Status
 
-Stage 1: Architecture + Mock UI is complete.
+Stage 2: Local persistence is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
 - Mock manual refresh.
-- Settings page.
-- Debug page.
+- Last mock snapshot restore on startup.
+- Bounded mock snapshot history.
+- Persisted auto-refresh and refresh interval settings.
+- Settings page with explicit save and clear-local-data.
+- Debug page with persistence diagnostics and recent history.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -30,10 +34,13 @@ Stage 1: Architecture + Mock UI is complete.
 - Weekly window mock display.
 - Credits mock display.
 - Manual mock refresh.
-- Refresh interval settings UI.
-- Debug information page.
+- Local latest snapshot persistence.
+- Local history persistence, capped at 100 snapshots.
+- Persisted refresh interval settings UI.
+- Debug information page with storage diagnostics.
+- Clear local data with confirmation.
 - Light and dark Material 3 themes.
-- Unit and widget tests for the Stage 1 mock flow.
+- Unit and widget tests for the Stage 2 mock persistence flow.
 
 ## Architecture
 
@@ -44,9 +51,10 @@ architecture:
 - `data`: mock data source, models, and repository implementation.
 - `presentation`: controllers, pages, and widgets.
 
-The quota feature depends on a `QuotaRepository` abstraction. Stage 1 ships a
-`MockQuotaDataSource` and `MockQuotaRepository`; the UI talks through use cases
-and controllers rather than directly reading data sources.
+The quota feature depends on a `QuotaRepository` abstraction. Stage 2 ships a
+`MockQuotaDataSource`, `LocalQuotaDataSource`, and `PersistentQuotaRepository`;
+the UI talks through use cases and controllers rather than directly reading data
+sources or `shared_preferences`.
 
 Future source placeholders include:
 
@@ -58,7 +66,8 @@ Future source placeholders include:
 
 More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/security.md](docs/security.md), [docs/roadmap.md](docs/roadmap.md), and
-[docs/stage1_report.md](docs/stage1_report.md).
+[docs/stage1_report.md](docs/stage1_report.md). The Stage 2 implementation is
+summarized in [docs/stage2_report.md](docs/stage2_report.md).
 
 ## Project Structure
 
@@ -73,7 +82,8 @@ More detail is available in [docs/architecture.md](docs/architecture.md),
 │   ├── architecture.md
 │   ├── roadmap.md
 │   ├── security.md
-│   └── stage1_report.md
+│   ├── stage1_report.md
+│   └── stage2_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -124,16 +134,16 @@ flutter run
 
 ## Development Notes
 
-- Stage 1 does not use network access except dependency fetching by developer
-  tooling.
-- Stage 1 uses mock data only.
+- Stage 2 app code does not use network access except dependency fetching by
+  developer tooling.
+- Stage 2 uses mock data only and persists only mock quota data/settings.
 - Do not add real account login before a security review.
 - Do not store credentials.
 
 ## Roadmap
 
 - [x] Stage 1: Architecture + Mock UI
-- [ ] Stage 2: Local persistence for snapshots and settings
+- [x] Stage 2: Local persistence for snapshots and settings
 - [ ] Stage 3: WebView login container
 - [ ] Stage 4: Usage page text extraction
 - [ ] Stage 5: Quota parser with confidence levels
@@ -152,7 +162,7 @@ flutter run
 - No analytics SDK by default.
 - Debug raw text should be treated as sensitive in future real-data stages.
 
-See [docs/security.md](docs/security.md) for the Stage 1 security boundary.
+See [docs/security.md](docs/security.md) for the Stage 2 security boundary.
 
 ## License
 

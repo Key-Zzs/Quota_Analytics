@@ -9,6 +9,15 @@ extension QuotaWindowStatusLabel on QuotaWindowStatus {
       QuotaWindowStatus.unknown => 'unknown',
     };
   }
+
+  String get storageKey => name;
+}
+
+QuotaWindowStatus quotaWindowStatusFromStorageKey(String? value) {
+  return QuotaWindowStatus.values.firstWhere(
+    (status) => status.storageKey == value,
+    orElse: () => QuotaWindowStatus.unknown,
+  );
 }
 
 class QuotaWindow {

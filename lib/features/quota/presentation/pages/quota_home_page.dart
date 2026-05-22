@@ -219,6 +219,12 @@ class _MetadataCard extends StatelessWidget {
               value: formatDateTime(snapshot.capturedAt),
             ),
             _MetadataRow(
+              label: 'Loaded from local cache',
+              value: controller.persistenceStatus.loadedFromLocalCache
+                  ? 'true'
+                  : 'false',
+            ),
+            _MetadataRow(
               label: 'Next suggested refresh',
               value: formatDateTime(snapshot.nextSuggestedRefreshAt),
             ),
