@@ -21,7 +21,10 @@ void main() {
 
     expect(find.text('5-hour window'), findsOneWidget);
     expect(find.text('Weekly window'), findsOneWidget);
-    expect(find.textContaining('Stage 2 Mock Mode'), findsOneWidget);
+    expect(
+      find.textContaining('Stage 3 WebView Login Container'),
+      findsOneWidget,
+    );
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();

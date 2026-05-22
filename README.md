@@ -8,14 +8,14 @@ usage limits, refresh windows, remaining quota, and quota status.
 This is an unofficial independent project. It is not affiliated with, endorsed
 by, or maintained by OpenAI, ChatGPT, or Codex.
 
-Stage 2 uses mock data plus local persistence only. The app does not access real
-GPT, ChatGPT, OpenAI, or Codex accounts, does not read cookies, tokens,
-passwords, browser storage, or credentials, and does not provide an official
-quota API.
+Stage 3 adds a WebView login container for manually opening the official
+website. The app still does not read real quota data, cookies, tokens,
+passwords, browser storage contents, local browser profiles, or credentials,
+and does not provide an official quota API.
 
 ## Current Status
 
-Stage 2: Local persistence is complete.
+Stage 3: WebView login container is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
@@ -23,8 +23,17 @@ Stage 2: Local persistence is complete.
 - Last mock snapshot restore on startup.
 - Bounded mock snapshot history.
 - Persisted auto-refresh and refresh interval settings.
+- Official Web Login page using `webview_flutter`.
+- Users can manually open the official login page inside the app WebView.
+- Usage page placeholder entry exists for future confirmation.
+- WebView status shows sanitized URL, title, loading progress, navigation time,
+  last error, and conservative auth status.
+- The app still does not read real quota data.
+- The app still does not read cookie/token values.
+- The app still does not parse the Usage page.
 - Settings page with explicit save and clear-local-data.
-- Debug page with persistence diagnostics and recent history.
+- Debug page with persistence diagnostics, WebView status, and Stage 3 safety
+  flags.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -37,10 +46,15 @@ Stage 2: Local persistence is complete.
 - Local latest snapshot persistence.
 - Local history persistence, capped at 100 snapshots.
 - Persisted refresh interval settings UI.
+- WebView login container for manual official-site login.
+- WebView controls for login page, usage placeholder, reload, back, forward, and
+  app WebView data clearing.
+- Sanitized WebView URL display that hides query and fragment values.
 - Debug information page with storage diagnostics.
 - Clear local data with confirmation.
 - Light and dark Material 3 themes.
-- Unit and widget tests for the Stage 2 mock persistence flow.
+- Unit and widget tests for the Stage 2 persistence flow and Stage 3 WebView
+  security boundary.
 
 ## Architecture
 
@@ -56,9 +70,15 @@ The quota feature depends on a `QuotaRepository` abstraction. Stage 2 ships a
 the UI talks through use cases and controllers rather than directly reading data
 sources or `shared_preferences`.
 
+The auth feature owns the Stage 3 WebView login container through
+`WebAuthConfig`, `WebAuthRepository`, `WebViewAuthController`, and the
+`WebViewLoginPage`. It is intentionally separate from the quota data source and
+parser pipeline so login navigation cannot accidentally become quota
+extraction.
+
 Future source placeholders include:
 
-- `WebViewQuotaDataSource` for a reviewed login container.
+- `WebViewQuotaDataSource` for a future reviewed usage extraction stage.
 - `OfficialApiQuotaDataSource` if a stable official quota API becomes available.
 - `DesktopAgentQuotaDataSource` for local desktop helpers.
 - Browser extension integration.
@@ -67,7 +87,8 @@ Future source placeholders include:
 More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/security.md](docs/security.md), [docs/roadmap.md](docs/roadmap.md), and
 [docs/stage1_report.md](docs/stage1_report.md). The Stage 2 implementation is
-summarized in [docs/stage2_report.md](docs/stage2_report.md).
+summarized in [docs/stage2_report.md](docs/stage2_report.md), and Stage 3 is
+summarized in [docs/stage3_report.md](docs/stage3_report.md).
 
 ## Project Structure
 
@@ -83,7 +104,8 @@ summarized in [docs/stage2_report.md](docs/stage2_report.md).
 │   ├── roadmap.md
 │   ├── security.md
 │   ├── stage1_report.md
-│   └── stage2_report.md
+│   ├── stage2_report.md
+│   └── stage3_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -134,17 +156,17 @@ flutter run
 
 ## Development Notes
 
-- Stage 2 app code does not use network access except dependency fetching by
-  developer tooling.
-- Stage 2 uses mock data only and persists only mock quota data/settings.
-- Do not add real account login before a security review.
+- Stage 3 WebView network access is limited to user-driven official-site
+  navigation inside the app WebView.
+- Stage 3 uses mock quota data only and persists only mock quota data/settings.
+- Do not add quota extraction or parsing without a new security review.
 - Do not store credentials.
 
 ## Roadmap
 
 - [x] Stage 1: Architecture + Mock UI
 - [x] Stage 2: Local persistence for snapshots and settings
-- [ ] Stage 3: WebView login container
+- [x] Stage 3: WebView login container
 - [ ] Stage 4: Usage page text extraction
 - [ ] Stage 5: Quota parser with confidence levels
 - [ ] Stage 6: Real manual refresh flow
@@ -157,12 +179,14 @@ flutter run
 ## Security And Privacy
 
 - No password storage.
-- No cookie upload.
+- No cookie reading or upload.
 - No token scraping.
+- No WebView HTML or body text extraction in Stage 3.
+- No real quota parser or refresh in Stage 3.
 - No analytics SDK by default.
 - Debug raw text should be treated as sensitive in future real-data stages.
 
-See [docs/security.md](docs/security.md) for the Stage 2 security boundary.
+See [docs/security.md](docs/security.md) for the Stage 3 security boundary.
 
 ## License
 

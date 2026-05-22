@@ -7,6 +7,8 @@ import 'core/storage/json_storage.dart';
 import 'core/storage/shared_preferences_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/time/clock.dart';
+import 'features/auth/presentation/controllers/webview_auth_controller.dart';
+import 'features/auth/presentation/pages/webview_login_page.dart';
 import 'features/debug/presentation/pages/debug_page.dart';
 import 'features/quota/data/datasources/local_quota_datasource.dart';
 import 'features/quota/data/datasources/mock_quota_datasource.dart';
@@ -67,6 +69,7 @@ class QuotaShell extends StatefulWidget {
 class _QuotaShellState extends State<QuotaShell> {
   late final Future<_AppControllers> _controllersFuture;
   _AppControllers? _controllers;
+  Widget? _webLoginPage;
   int _selectedIndex = 0;
 
   @override
@@ -123,9 +126,11 @@ class _QuotaShellState extends State<QuotaShell> {
         controller: settingsController,
         onClearLocalData: _clearAllLocalData,
       ),
+      _buildWebLoginPage(controllers),
       DebugPage(
         controller: quotaController,
         settingsController: settingsController,
+        webAuthController: controllers.webAuthController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -167,6 +172,11 @@ class _QuotaShellState extends State<QuotaShell> {
                 label: 'Settings',
               ),
               NavigationDestination(
+                icon: Icon(Icons.lock_outline),
+                selectedIcon: Icon(Icons.lock),
+                label: 'Web Login',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.bug_report_outlined),
                 selectedIcon: Icon(Icons.bug_report),
                 label: 'Debug',
@@ -176,6 +186,15 @@ class _QuotaShellState extends State<QuotaShell> {
         );
       },
     );
+  }
+
+  Widget _buildWebLoginPage(_AppControllers controllers) {
+    if (_selectedIndex == 2 || _webLoginPage != null) {
+      return _webLoginPage ??= WebViewLoginPage(
+        controller: controllers.webAuthController,
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Future<_AppControllers> _createControllers() async {
@@ -203,6 +222,7 @@ class _QuotaShellState extends State<QuotaShell> {
     final controllers = _AppControllers(
       quotaController: QuotaController(repository: quotaRepository),
       settingsController: SettingsController(repository: settingsRepository),
+      webAuthController: WebViewAuthController(clock: effectiveClock),
     );
     _controllers = controllers;
 
@@ -234,6 +254,7 @@ class _QuotaShellState extends State<QuotaShell> {
     return switch (index) {
       0 => AppConstants.appName,
       1 => 'Settings',
+      2 => 'Web Login',
       _ => 'Debug',
     };
   }
@@ -243,13 +264,16 @@ class _AppControllers {
   const _AppControllers({
     required this.quotaController,
     required this.settingsController,
+    required this.webAuthController,
   });
 
   final QuotaController quotaController;
   final SettingsController settingsController;
+  final WebViewAuthController webAuthController;
 
   void dispose() {
     quotaController.dispose();
     settingsController.dispose();
+    webAuthController.dispose();
   }
 }

@@ -12,8 +12,10 @@ policy. Keep data local.
 
 ## Stage 3: WebView Login Container
 
-Design and implement a reviewed WebView container. Define cookie/session
-storage, clear-session controls, and debug boundaries before coding.
+Implemented a reviewed WebView login container. Users can manually open the
+official website, inspect sanitized navigation state, reload, go back/forward,
+open a usage placeholder, and clear this app's WebView data where supported.
+The app does not read cookies, tokens, HTML, page text, or quota values.
 
 ## Stage 4: Usage Page Text Extraction
 
@@ -53,3 +55,17 @@ storage, credentials, and background rules separately.
 
 Add an official API adapter only if a stable API becomes available and is
 appropriate for this use case.
+
+## Status Checklist
+
+- [x] Stage 1: Architecture + Mock UI
+- [x] Stage 2: Local persistence
+- [x] Stage 3: WebView login container
+- [ ] Stage 4: Usage page text extraction
+- [ ] Stage 5: Quota parser
+- [ ] Stage 6: Real manual refresh flow
+- [ ] Stage 7: Foreground auto refresh
+- [ ] Stage 8: Background refresh / notification
+- [ ] Stage 9: iOS adaptation
+- [ ] Stage 10: Desktop / wearable clients
+- [ ] Stage 11: Optional official API adapter

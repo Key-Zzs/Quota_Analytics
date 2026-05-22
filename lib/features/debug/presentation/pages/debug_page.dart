@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/security/sensitive_data_policy.dart';
 import '../../../../core/utils/date_time_format.dart';
+import '../../../auth/presentation/controllers/webview_auth_controller.dart';
 import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../../quota/domain/entities/quota_source.dart';
@@ -15,17 +17,23 @@ class DebugPage extends StatelessWidget {
     super.key,
     required this.controller,
     required this.settingsController,
+    required this.webAuthController,
     required this.onClearLocalData,
   });
 
   final QuotaController controller;
   final SettingsController settingsController;
+  final WebViewAuthController webAuthController;
   final Future<void> Function() onClearLocalData;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([controller, settingsController]),
+      animation: Listenable.merge([
+        controller,
+        settingsController,
+        webAuthController,
+      ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
         final persistence = controller.persistenceStatus;
@@ -104,6 +112,45 @@ class DebugPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _DebugCard(
+              title: 'Stage 3 WebView',
+              children: [
+                const _DebugRow(
+                  label: 'WebView feature enabled',
+                  value: 'true',
+                ),
+                _DebugRow(
+                  label: 'Current web auth status',
+                  value: webAuthController.authStatus.label,
+                ),
+                _DebugRow(
+                  label: 'Last WebView URL',
+                  value: webAuthController.currentUrl,
+                ),
+                _DebugRow(
+                  label: 'Last WebView error',
+                  value: webAuthController.lastError ?? 'none',
+                ),
+                const SizedBox(height: 8),
+                const Text('Safety status'),
+                Text(
+                  'Cookie reading ${_disabledLabel(SensitiveDataPolicy.cookieReadingEnabled)}',
+                ),
+                Text(
+                  'Token reading ${_disabledLabel(SensitiveDataPolicy.tokenReadingEnabled)}',
+                ),
+                Text(
+                  'HTML extraction ${_disabledLabel(SensitiveDataPolicy.htmlExtractionEnabled)}',
+                ),
+                Text(
+                  'Quota parsing ${_disabledLabel(SensitiveDataPolicy.quotaParsingEnabled)}',
+                ),
+                Text(
+                  'Background refresh ${_disabledLabel(SensitiveDataPolicy.backgroundRefreshEnabled)}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DebugCard(
               title: 'Recent snapshots',
               children: [
                 if (controller.history.isEmpty)
@@ -130,10 +177,11 @@ class DebugPage extends StatelessWidget {
             const _DebugCard(
               title: 'Safety notice',
               children: [
-                Text('No real login'),
+                Text('WebView login container only'),
                 Text('No token access'),
-                Text('No network request'),
                 Text('No cookie reading'),
+                Text('No quota extraction'),
+                Text('No background refresh'),
                 SizedBox(height: 8),
                 Text(AppConstants.stageNotice),
               ],
@@ -142,6 +190,10 @@ class DebugPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  static String _disabledLabel(bool enabled) {
+    return enabled ? 'enabled' : 'disabled';
   }
 
   Future<void> _confirmClear(BuildContext context) async {

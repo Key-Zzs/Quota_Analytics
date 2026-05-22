@@ -2,10 +2,11 @@ class AppConstants {
   const AppConstants._();
 
   static const appName = 'Quota Analytics';
-  static const appSubtitle = 'Unofficial personal tool / Mock mode';
-  static const appMode = 'mock';
+  static const appSubtitle =
+      'Unofficial personal tool / WebView login container + mock quota data';
+  static const appMode = 'stage3-webview-login-container';
   static const stageNotice =
-      'Stage 2 Mock Mode - local persistence only; no real OpenAI, ChatGPT, or Codex access.';
+      'Stage 3 WebView Login Container - no quota extraction, parser, cookie/token access, or real refresh.';
   static const safetyNotice =
-      'No real login, token access, network request, or cookie reading.';
+      'No password storage, cookie/token reading, HTML extraction, quota parsing, or background refresh.';
 }
