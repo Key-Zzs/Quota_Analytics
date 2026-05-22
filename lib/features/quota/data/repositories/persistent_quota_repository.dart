@@ -31,6 +31,13 @@ class PersistentQuotaRepository implements QuotaRepository {
   }
 
   @override
+  Future<QuotaSnapshot> saveSnapshot(QuotaSnapshot snapshot) async {
+    await localDataSource.saveLatestSnapshot(snapshot);
+    await localDataSource.appendHistory(snapshot);
+    return snapshot;
+  }
+
+  @override
   Future<List<QuotaSnapshot>> getHistory() {
     return localDataSource.loadHistory();
   }

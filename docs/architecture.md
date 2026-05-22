@@ -3,13 +3,13 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 4 keeps quota data mock-only while adding manual WebView
-visible text extraction for local parser development.
+information. Stage 5 keeps acquisition manual and local while adding a quota
+parser for Stage 4 redacted visible text.
 
-Stage 4 does not implement quota parsing, real quota refresh, cookies, tokens,
-storage reads, HTML extraction, backend calls, or automatic refresh. The WebView
-login container, text extraction flow, and future parser remain intentionally
-separate.
+Stage 5 does not implement real quota refresh, cookies, tokens, storage reads,
+HTML extraction, backend calls, automatic refresh, or background refresh. The
+WebView login container, text extraction flow, parser, and quota persistence
+remain intentionally separate.
 
 ## Layers
 
@@ -28,6 +28,8 @@ The app uses a feature-first Clean Architecture layout:
   presentation layers.
 - `features/extraction`: Stage 4 manual page text extraction, redaction, local
   redacted preview storage, controller state, and widgets.
+- `features/parser`: Stage 5 local parser domain model, regex parser,
+  confidence rules, result-to-snapshot mapper, controller state, and widgets.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -37,7 +39,7 @@ The quota model is explicit and typed:
 - `QuotaSnapshot`: one captured view of account label, source, confidence,
   windows, credits, timestamps, and debug text.
 - `QuotaWindow`: one usage window such as `5-hour window` or `Weekly window`.
-- `QuotaSource`: mock plus future placeholders.
+- `QuotaSource`: mock, `webViewManualExtraction`, plus future placeholders.
 - `ParserConfidence`: parser quality marker.
 - `QuotaWindowStatus`: ok, warning, critical, or unknown.
 
@@ -52,6 +54,7 @@ The domain depends on `QuotaRepository`:
 abstract class QuotaRepository {
   Future<QuotaSnapshot> getLatestSnapshot();
   Future<QuotaSnapshot> refreshSnapshot();
+  Future<QuotaSnapshot> saveSnapshot(QuotaSnapshot snapshot);
   Future<List<QuotaSnapshot>> getHistory();
   Future<void> clearLocalQuotaData();
   Future<QuotaPersistenceStatus> getPersistenceStatus();
@@ -72,6 +75,8 @@ repository contract. This keeps future data sources out of widget code.
 `LocalQuotaDataSource`. If no valid local snapshot exists, it falls back to
 `MockQuotaDataSource`. Manual refresh still comes from the mock source, then the
 result is written to latest snapshot storage and snapshot history.
+Stage 5 uses `saveSnapshot` only after the user confirms saving a parsed
+snapshot preview.
 
 ## Persistence Layer
 
@@ -159,13 +164,40 @@ Shared security helpers live in `core/security`:
 - `TextRedactor`: redacts emails, bearer tokens, suspected API keys,
   token-like strings, and secret/password/token key-value values.
 
+## Parser Feature
+
+The parser feature owns Stage 5 local interpretation of already-redacted visible
+text:
+
+- `QuotaParseResult`: parser success flag, confidence, windows, credits,
+  matched signals, warnings, errors, parsed timestamp, and parser version.
+- `ParsedQuotaWindow`: parsed 5-hour, weekly, or unknown window with optional
+  used, limit, remaining, ratio, reset text/time, and evidence labels.
+- `ParsedCredits`: optional credits remaining/total and local evidence text.
+- `QuotaParser`: pure Dart contract with `parse(String text, {DateTime? now})`.
+- `RegexQuotaParser`: conservative line/context regex parser for common
+  used/limit, remaining, percentage, reset, window-label, credits, and basic
+  Chinese patterns.
+- `QuotaTextPreprocessor`: whitespace normalization and line splitting.
+- `QuotaCandidateExtractor`: window label discovery for 5-hour and weekly
+  contexts.
+- `ParseResultToQuotaSnapshotMapper`: converts high/medium parse results into
+  local `QuotaSnapshot` previews with `source: webViewManualExtraction`.
+- `QuotaParserController`: presentation state for manual parse, preview, clear,
+  and user-confirmed local save.
+- `ParseResultCard` and `ParsedWindowCard`: debug UI for confidence, signals,
+  warnings, errors, fields, credits, and evidence.
+
+The parser does not depend on WebView and has no file, storage, cookie, token,
+or network access. Its only app input is Stage 4 redacted visible text.
+
 ## Why Extraction And Parser Are Separate
 
 Extraction is a controlled acquisition boundary; parsing is a data
 interpretation boundary. Stage 4 only acquires bounded, redacted visible text
-for local debugging. Stage 5 can build a parser against that structured
-`ExtractedPageText` output without gaining access to cookies, tokens, WebView
-storage, HTML, network responses, or background execution.
+for local debugging. Stage 5 parses that structured `ExtractedPageText` output
+without gaining access to cookies, tokens, WebView storage, HTML, network
+responses, or background execution.
 
 ## Why Login And Parser Are Separate
 
@@ -183,18 +215,19 @@ contracts expose typed entities and futures. This keeps the core quota/settings
 model reusable for future local JSON files, SQLite/Drift, an official API
 adapter, a reviewed WebView source, or desktop agents without changing widgets.
 
-## Why Quota Data Is Still Mock Only
+## Why Real Refresh Is Still Disabled
 
-Mock-only scope keeps the early milestones safe and testable:
+Mock/manual-parser scope keeps the early milestones safe and testable:
 
 - User-driven WebView login only, with no app access to credentials.
 - User-triggered visible text extraction only, with no cookie or token handling.
-- No network parsing.
+- Local parser only for redacted visible text.
+- No network parsing or uploads.
 - No hidden background refresh.
 - Fast local unit and widget tests.
 - Clear UI and domain shape before security-sensitive integrations.
-- Local persistence stores only mock quota data, user settings, and the latest
-  redacted extracted text preview.
+- Local persistence stores mock quota data, user settings, the latest redacted
+  extracted text preview, and user-confirmed parsed snapshot previews.
 
 ## Future Replacements
 

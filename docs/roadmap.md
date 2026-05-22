@@ -24,10 +24,12 @@ WebView page. The app reads only `document.body.innerText`, blocks empty,
 non-HTTPS, and unknown-host URLs, redacts extracted text locally, and stores
 only the latest bounded redacted preview for debugging.
 
-## Stage 5: Parser
+## Stage 5: Quota Parser With Confidence Levels
 
-Parse extracted usage text into the existing quota domain model. Track parser
-confidence and failure reasons.
+Implemented a local parser for Stage 4 redacted visible text. The parser
+produces `QuotaParseResult`, confidence, warnings/errors, parsed windows,
+optional credits, and high/medium `QuotaSnapshot` previews that can be saved
+only after explicit user confirmation.
 
 ## Stage 6: Manual Refresh
 
@@ -64,7 +66,7 @@ appropriate for this use case.
 - [x] Stage 2: Local persistence
 - [x] Stage 3: WebView login container
 - [x] Stage 4: Usage page text extraction
-- [ ] Stage 5: Quota parser with confidence levels
+- [x] Stage 5: Quota parser with confidence levels
 - [ ] Stage 6: Real manual refresh flow
 - [ ] Stage 7: Foreground auto refresh
 - [ ] Stage 8: Background refresh / notification

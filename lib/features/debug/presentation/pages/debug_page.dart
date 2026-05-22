@@ -8,6 +8,7 @@ import '../../../../core/utils/date_time_format.dart';
 import '../../../auth/presentation/controllers/webview_auth_controller.dart';
 import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
 import '../../../extraction/presentation/widgets/extracted_text_preview.dart';
+import '../../../parser/presentation/controllers/quota_parser_controller.dart';
 import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../../quota/domain/entities/quota_source.dart';
@@ -21,6 +22,7 @@ class DebugPage extends StatelessWidget {
     required this.settingsController,
     required this.webAuthController,
     required this.pageTextExtractionController,
+    required this.quotaParserController,
     required this.onClearLocalData,
   });
 
@@ -28,6 +30,7 @@ class DebugPage extends StatelessWidget {
   final SettingsController settingsController;
   final WebViewAuthController webAuthController;
   final PageTextExtractionController pageTextExtractionController;
+  final QuotaParserController quotaParserController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -38,6 +41,7 @@ class DebugPage extends StatelessWidget {
         settingsController,
         webAuthController,
         pageTextExtractionController,
+        quotaParserController,
       ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
@@ -245,8 +249,45 @@ class DebugPage extends StatelessWidget {
                 const Text('localStorage reading disabled'),
                 const Text('sessionStorage reading disabled'),
                 const Text('HTML extraction disabled'),
-                const Text('Quota parsing disabled'),
+                const Text('Quota parsing enabled'),
                 const Text('Background refresh disabled'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DebugCard(
+              title: 'Stage 5 Quota Parser',
+              children: [
+                const _DebugRow(label: 'Quota parser enabled', value: 'true'),
+                const _DebugRow(label: 'Automatic refresh', value: 'disabled'),
+                _DebugRow(
+                  label: 'Last parser input length',
+                  value: quotaParserController.lastParserInputLength.toString(),
+                ),
+                _DebugRow(
+                  label: 'Last parser confidence',
+                  value:
+                      quotaParserController.lastResult?.confidence.label ??
+                      ParserConfidence.notApplicable.label,
+                ),
+                _DebugRow(
+                  label: 'Parser version',
+                  value:
+                      quotaParserController.lastResult?.parserVersion ??
+                      'regex-quota-parser-v1',
+                ),
+                _DebugRow(
+                  label: 'Last parser warnings',
+                  value:
+                      quotaParserController.lastResult?.warnings.join(' | ') ??
+                      'none',
+                ),
+                _DebugRow(
+                  label: 'Last parser errors',
+                  value:
+                      quotaParserController.lastResult?.errors.join(' | ') ??
+                      quotaParserController.lastError ??
+                      'none',
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -282,7 +323,7 @@ class DebugPage extends StatelessWidget {
                 Text('No cookie reading'),
                 Text('No localStorage or sessionStorage reading'),
                 Text('Manual visible text extraction only'),
-                Text('No quota parsing'),
+                Text('Local quota parsing from redacted text only'),
                 Text('No background refresh'),
                 SizedBox(height: 8),
                 Text(AppConstants.stageNotice),

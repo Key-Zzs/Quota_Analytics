@@ -6,6 +6,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../extraction/data/datasources/webview_text_extraction_datasource.dart';
 import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
 import '../../../extraction/presentation/widgets/extraction_status_card.dart';
+import '../../../parser/presentation/controllers/quota_parser_controller.dart';
+import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../data/datasources/webview_auth_datasource.dart';
 import '../../data/repositories/webview_auth_repository.dart';
 import '../controllers/webview_auth_controller.dart';
@@ -21,11 +23,15 @@ class WebViewLoginPage extends StatefulWidget {
     super.key,
     this.controller,
     this.pageTextExtractionController,
+    this.quotaParserController,
+    this.onParsedSnapshotSaved,
     this.webViewBuilder,
   });
 
   final WebViewAuthController? controller;
   final PageTextExtractionController? pageTextExtractionController;
+  final QuotaParserController? quotaParserController;
+  final ValueChanged<QuotaSnapshot>? onParsedSnapshotSaved;
   final AuthWebViewBuilder? webViewBuilder;
 
   @override
@@ -80,6 +86,7 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
       animation: Listenable.merge([
         _controller,
         widget.pageTextExtractionController,
+        widget.quotaParserController,
       ]),
       builder: (context, _) {
         return LayoutBuilder(
@@ -109,6 +116,8 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
                   const SizedBox(height: 12),
                   ExtractionStatusCard(
                     controller: widget.pageTextExtractionController!,
+                    quotaParserController: widget.quotaParserController,
+                    onParsedSnapshotSaved: widget.onParsedSnapshotSaved,
                   ),
                 ],
                 const SizedBox(height: 12),

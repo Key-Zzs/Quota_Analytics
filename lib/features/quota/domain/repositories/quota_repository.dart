@@ -4,6 +4,7 @@ import '../entities/quota_snapshot.dart';
 abstract class QuotaRepository {
   Future<QuotaSnapshot> getLatestSnapshot();
   Future<QuotaSnapshot> refreshSnapshot();
+  Future<QuotaSnapshot> saveSnapshot(QuotaSnapshot snapshot);
   Future<List<QuotaSnapshot>> getHistory();
   Future<void> clearLocalQuotaData();
   Future<QuotaPersistenceStatus> getPersistenceStatus();

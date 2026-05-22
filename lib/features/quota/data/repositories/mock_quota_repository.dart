@@ -4,12 +4,17 @@ import '../../domain/repositories/quota_repository.dart';
 import '../datasources/mock_quota_datasource.dart';
 
 class MockQuotaRepository implements QuotaRepository {
-  const MockQuotaRepository(this.dataSource);
+  MockQuotaRepository(this.dataSource);
 
   final MockQuotaDataSource dataSource;
+  QuotaSnapshot? _savedSnapshot;
 
   @override
   Future<QuotaSnapshot> getLatestSnapshot() {
+    final savedSnapshot = _savedSnapshot;
+    if (savedSnapshot != null) {
+      return Future.value(savedSnapshot);
+    }
     return dataSource.getLatestSnapshot();
   }
 
@@ -19,12 +24,20 @@ class MockQuotaRepository implements QuotaRepository {
   }
 
   @override
+  Future<QuotaSnapshot> saveSnapshot(QuotaSnapshot snapshot) async {
+    _savedSnapshot = snapshot;
+    return snapshot;
+  }
+
+  @override
   Future<List<QuotaSnapshot>> getHistory() async {
-    return const [];
+    final savedSnapshot = _savedSnapshot;
+    return savedSnapshot == null ? const [] : [savedSnapshot];
   }
 
   @override
   Future<void> clearLocalQuotaData() async {
+    _savedSnapshot = null;
     dataSource.reset();
   }
 

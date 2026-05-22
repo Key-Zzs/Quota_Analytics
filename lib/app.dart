@@ -15,6 +15,12 @@ import 'features/extraction/data/datasources/local_extracted_text_datasource.dar
 import 'features/extraction/data/repositories/page_text_extraction_repository_impl.dart';
 import 'features/extraction/domain/repositories/page_text_extraction_repository.dart';
 import 'features/extraction/presentation/controllers/page_text_extraction_controller.dart';
+import 'features/parser/data/mappers/parse_result_to_quota_snapshot_mapper.dart';
+import 'features/parser/data/parsers/regex_quota_parser.dart';
+import 'features/parser/data/repositories/quota_parser_repository_impl.dart';
+import 'features/parser/domain/repositories/quota_parser_repository.dart';
+import 'features/parser/domain/usecases/save_parsed_quota_snapshot.dart';
+import 'features/parser/presentation/controllers/quota_parser_controller.dart';
 import 'features/quota/data/datasources/local_quota_datasource.dart';
 import 'features/quota/data/datasources/mock_quota_datasource.dart';
 import 'features/quota/data/repositories/persistent_quota_repository.dart';
@@ -33,12 +39,14 @@ class QuotaAnalyticsApp extends StatelessWidget {
     this.quotaRepository,
     this.settingsRepository,
     this.pageTextExtractionRepository,
+    this.quotaParserRepository,
     this.clock,
   });
 
   final QuotaRepository? quotaRepository;
   final SettingsRepository? settingsRepository;
   final PageTextExtractionRepository? pageTextExtractionRepository;
+  final QuotaParserRepository? quotaParserRepository;
   final Clock? clock;
 
   @override
@@ -52,6 +60,7 @@ class QuotaAnalyticsApp extends StatelessWidget {
         quotaRepository: quotaRepository,
         settingsRepository: settingsRepository,
         pageTextExtractionRepository: pageTextExtractionRepository,
+        quotaParserRepository: quotaParserRepository,
         clock: clock,
       ),
     );
@@ -64,12 +73,14 @@ class QuotaShell extends StatefulWidget {
     this.quotaRepository,
     this.settingsRepository,
     this.pageTextExtractionRepository,
+    this.quotaParserRepository,
     this.clock,
   });
 
   final QuotaRepository? quotaRepository;
   final SettingsRepository? settingsRepository;
   final PageTextExtractionRepository? pageTextExtractionRepository;
+  final QuotaParserRepository? quotaParserRepository;
   final Clock? clock;
 
   @override
@@ -142,6 +153,7 @@ class _QuotaShellState extends State<QuotaShell> {
         settingsController: settingsController,
         webAuthController: controllers.webAuthController,
         pageTextExtractionController: controllers.pageTextExtractionController,
+        quotaParserController: controllers.quotaParserController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -204,6 +216,8 @@ class _QuotaShellState extends State<QuotaShell> {
       return _webLoginPage ??= WebViewLoginPage(
         controller: controllers.webAuthController,
         pageTextExtractionController: controllers.pageTextExtractionController,
+        quotaParserController: controllers.quotaParserController,
+        onParsedSnapshotSaved: controllers.quotaController.applySavedSnapshot,
       );
     }
     return const SizedBox.shrink();
@@ -236,6 +250,9 @@ class _QuotaShellState extends State<QuotaShell> {
           localDataSource: LocalExtractedTextDataSource(storage: storage!),
           clock: effectiveClock,
         );
+    final quotaParserRepository =
+        widget.quotaParserRepository ??
+        QuotaParserRepositoryImpl(parser: RegexQuotaParser());
 
     final controllers = _AppControllers(
       quotaController: QuotaController(repository: quotaRepository),
@@ -243,6 +260,11 @@ class _QuotaShellState extends State<QuotaShell> {
       webAuthController: WebViewAuthController(clock: effectiveClock),
       pageTextExtractionController: PageTextExtractionController(
         repository: pageTextExtractionRepository,
+      ),
+      quotaParserController: QuotaParserController(
+        repository: quotaParserRepository,
+        mapper: const ParseResultToQuotaSnapshotMapper(),
+        saveParsedQuotaSnapshot: SaveParsedQuotaSnapshot(quotaRepository),
       ),
     );
     _controllers = controllers;
@@ -271,6 +293,7 @@ class _QuotaShellState extends State<QuotaShell> {
     await controllers.quotaController.clearLocalData();
     await controllers.settingsController.clear();
     await controllers.pageTextExtractionController.clearExtractedPageText();
+    controllers.quotaParserController.clearParseResult();
   }
 
   String _titleForIndex(int index) {
@@ -289,17 +312,20 @@ class _AppControllers {
     required this.settingsController,
     required this.webAuthController,
     required this.pageTextExtractionController,
+    required this.quotaParserController,
   });
 
   final QuotaController quotaController;
   final SettingsController settingsController;
   final WebViewAuthController webAuthController;
   final PageTextExtractionController pageTextExtractionController;
+  final QuotaParserController quotaParserController;
 
   void dispose() {
     quotaController.dispose();
     settingsController.dispose();
     webAuthController.dispose();
     pageTextExtractionController.dispose();
+    quotaParserController.dispose();
   }
 }

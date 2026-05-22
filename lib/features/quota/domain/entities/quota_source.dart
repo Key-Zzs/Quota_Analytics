@@ -1,5 +1,6 @@
 enum QuotaSource {
   mock,
+  webViewManualExtraction,
   webViewPlaceholder,
   officialApiPlaceholder,
   browserExtensionPlaceholder,
@@ -11,6 +12,7 @@ extension QuotaSourceLabel on QuotaSource {
   String get label {
     return switch (this) {
       QuotaSource.mock => 'mock',
+      QuotaSource.webViewManualExtraction => 'WebView manual extraction',
       QuotaSource.webViewPlaceholder => 'WebView placeholder',
       QuotaSource.officialApiPlaceholder => 'Official API placeholder',
       QuotaSource.browserExtensionPlaceholder =>

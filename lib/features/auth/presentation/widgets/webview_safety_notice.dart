@@ -23,7 +23,7 @@ class WebViewSafetyNotice extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Stage 4: manual page text extraction only',
+                    'Stage 5: local parser for redacted visible text',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w700,
@@ -50,7 +50,7 @@ class WebViewSafetyNotice extends StatelessWidget {
               style: TextStyle(color: colorScheme.onSecondaryContainer),
             ),
             Text(
-              'Quota parsing is not implemented in this stage.',
+              'Quota parsing runs locally only after text has been redacted.',
               style: TextStyle(color: colorScheme.onSecondaryContainer),
             ),
             Text(

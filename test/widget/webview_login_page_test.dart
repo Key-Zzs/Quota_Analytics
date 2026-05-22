@@ -50,7 +50,9 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text('Quota parsing is not implemented in this stage.'),
+      find.text(
+        'Quota parsing runs locally only after text has been redacted.',
+      ),
       findsWidgets,
     );
     expect(find.text('Open login page'), findsOneWidget);
@@ -89,7 +91,7 @@ void main() {
     );
 
     expect(
-      find.textContaining('manual page text extraction only'),
+      find.textContaining('local parser for redacted visible text'),
       findsWidgets,
     );
     expect(
@@ -136,7 +138,7 @@ void main() {
     expect(find.text('localStorage reading disabled'), findsWidgets);
     expect(find.text('sessionStorage reading disabled'), findsWidgets);
     expect(find.text('HTML extraction disabled'), findsOneWidget);
-    expect(find.text('Quota parsing disabled'), findsOneWidget);
+    expect(find.text('Quota parsing enabled'), findsOneWidget);
     expect(find.text('Background refresh disabled'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -146,6 +148,14 @@ void main() {
     );
     expect(find.text('Text extraction enabled'), findsOneWidget);
     expect(find.text('Last extraction safety status'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Quota parser enabled'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Quota parser enabled'), findsOneWidget);
+    expect(find.text('Automatic refresh'), findsWidgets);
   });
 }
 

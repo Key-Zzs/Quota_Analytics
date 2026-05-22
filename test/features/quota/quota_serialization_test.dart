@@ -52,6 +52,10 @@ void main() {
   test('quota enums serialize as strings', () {
     expect(QuotaSource.mock.storageKey, 'mock');
     expect(quotaSourceFromStorageKey('mock'), QuotaSource.mock);
+    expect(
+      quotaSourceFromStorageKey('webViewManualExtraction'),
+      QuotaSource.webViewManualExtraction,
+    );
 
     expect(ParserConfidence.high.storageKey, 'high');
     expect(parserConfidenceFromStorageKey('high'), ParserConfidence.high);

@@ -3,10 +3,10 @@ class AppConstants {
 
   static const appName = 'Quota Analytics';
   static const appSubtitle =
-      'Unofficial personal tool / manual WebView text extraction + mock quota data';
-  static const appMode = 'stage4-manual-page-text-extraction';
+      'Unofficial personal tool / manual WebView text extraction + local quota parser';
+  static const appMode = 'stage5-local-quota-parser';
   static const stageNotice =
-      'Stage 4: manual page text extraction only. No quota parser, cookie/token/storage access, or real refresh.';
+      'Stage 5: local parser for redacted visible text only. No cookie/token/storage access or real refresh.';
   static const safetyNotice =
-      'No password storage, cookie/token/localStorage/sessionStorage reading, HTML extraction, quota parsing, or background refresh.';
+      'No password storage, cookie/token/localStorage/sessionStorage reading, HTML extraction, network upload, automatic refresh, or background refresh.';
 }

@@ -98,6 +98,14 @@ class QuotaController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> applySavedSnapshot(QuotaSnapshot snapshot) async {
+    _applySnapshot(snapshot);
+    _lastRefreshResult = 'Parsed snapshot saved locally';
+    _lastRefreshDuration = null;
+    await _refreshPersistenceState();
+    notifyListeners();
+  }
+
   Future<void> clearLocalData() async {
     _status = QuotaPageStatus.loading;
     _errorMessage = null;

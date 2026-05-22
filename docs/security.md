@@ -1,5 +1,31 @@
 # Security
 
+## Stage 5 Parser Boundary
+
+Stage 5 adds a local parser that reads only Stage 4 redacted visible text
+(`ExtractedPageText.redactedTextPreview`) or artificial test/mock samples. It
+does not read WebView state directly and does not access raw unredacted page
+text.
+
+Stage 5 does not read or extract:
+
+- `document.cookie`
+- WebView cookies
+- `localStorage`
+- `sessionStorage`
+- `indexedDB`
+- Access tokens, refresh tokens, session tokens, or authorization headers
+- Page HTML, DOM structure, scripts, CSS, request headers, network requests, or
+  network responses
+
+The parser input and output stay local. They are not uploaded to a backend,
+analytics SDK, advertising SDK, crash reporter, or model service.
+
+Parser results can be inaccurate because visible usage page wording may change.
+The UI must display `ParserConfidence`, warnings, and errors. Low-confidence
+results must not be automatically saved as real quota data; Stage 5 enables
+manual save only for high/medium parsed snapshot previews.
+
 ## Stage 4 Page Text Extraction Boundary
 
 Stage 4 adds user-triggered page text extraction for local debugging only. The
@@ -88,7 +114,8 @@ clear system browser data and does not remove this app's saved mock quota
 snapshots, history, or settings.
 
 Stage 4 extends this boundary with manual `document.body.innerText` extraction
-only. It still does not read cookies, tokens, storage, HTML, or network data.
+only. Stage 5 adds a parser for the redacted extraction result only. It still
+does not read cookies, tokens, storage, HTML, or network data.
 
 ## Stage 2 Boundary
 
@@ -131,8 +158,10 @@ Clear local data removes only those keys. It does not remove project files,
 Flutter caches, emulator files, browser data, credentials, or any system
 storage.
 
-History is capped at 100 mock snapshots. Corrupted JSON is ignored or removed
-for the affected app key so startup does not crash.
+History is capped at 100 quota snapshots. Stage 5 parsed snapshots, if the user
+explicitly saves them, use the same local latest/history keys and include source
+and parser confidence. Corrupted JSON is ignored or removed for the affected app
+key so startup does not crash.
 
 ## Network
 
@@ -142,6 +171,9 @@ value update only, followed by local persistence.
 Stage 3 adds user-driven HTTPS WebView navigation for official-site login. It
 does not add a quota network API, remote backend, telemetry SDK, advertising
 SDK, crash reporting SDK, or automatic refresh job.
+
+Stage 5 parsing is local Dart code only. It does not add network upload,
+backend sync, telemetry, automatic refresh, or background refresh.
 
 Development commands such as `flutter doctor`, `flutter pub get`, and Android
 Gradle builds may perform normal toolchain checks or dependency resolution, but
@@ -162,8 +194,10 @@ permission requests are denied by the app, and Android only adds the normal
 Stage 2 debug text is mock-only. Stage 4 extracted text may contain account
 identifiers or usage details even after redaction. The app displays and stores
 only a bounded redacted preview, and never logs or uploads the raw page text.
-Any future raw-text parser input must go through another review before it can be
-persisted, exported, or uploaded.
+Stage 5 parser input is that bounded redacted preview only. Parsed snapshots
+store an evidence summary, not the full parser input. Any future raw-text parser
+input must go through another review before it can be persisted, exported, or
+uploaded.
 
 ## Device Testing
 

@@ -24,10 +24,7 @@ void main() {
 
     expect(find.text('5-hour window'), findsOneWidget);
     expect(find.text('Weekly window'), findsOneWidget);
-    expect(
-      find.textContaining('Stage 4: manual page text extraction only'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Stage 5: local parser'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
