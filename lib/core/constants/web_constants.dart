@@ -3,7 +3,7 @@ class WebConstants {
 
   static const loginUrl = 'https://chatgpt.com/auth/login';
 
-  // Placeholder only. Stage 3 opens an official web surface but does not read
-  // usage content, parse quota data, or infer account state from page body text.
+  // Placeholder only. Stage 4 requires the user to trigger visible text
+  // extraction manually and still does not parse quota data.
   static const usageUrlPlaceholder = 'https://chatgpt.com/#settings';
 }

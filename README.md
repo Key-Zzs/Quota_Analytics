@@ -8,14 +8,16 @@ usage limits, refresh windows, remaining quota, and quota status.
 This is an unofficial independent project. It is not affiliated with, endorsed
 by, or maintained by OpenAI, ChatGPT, or Codex.
 
-Stage 3 adds a WebView login container for manually opening the official
-website. The app still does not read real quota data, cookies, tokens,
-passwords, browser storage contents, local browser profiles, or credentials,
-and does not provide an official quota API.
+Stage 4 adds manual visible page text extraction from the current in-app
+WebView page. Extraction happens only after the user taps the button, reads only
+`document.body.innerText`, redacts the result locally, and stores only a bounded
+redacted preview for debugging. The app still does not read real quota data,
+cookies, tokens, passwords, browser storage contents, local browser profiles,
+or credentials, and does not provide an official quota API.
 
 ## Current Status
 
-Stage 3: WebView login container is complete.
+Stage 4: manual page text extraction is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
@@ -26,13 +28,17 @@ Stage 3: WebView login container is complete.
 - Official Web Login page using `webview_flutter`.
 - Users can manually open the official login page inside the app WebView.
 - Usage page placeholder entry exists for future confirmation.
+- Users can manually extract visible text from the current WebView page.
+- Extracted text is redacted before display and local storage.
 - WebView status shows sanitized URL, title, loading progress, navigation time,
   last error, and conservative auth status.
 - The app still does not read real quota data.
 - The app still does not read cookie/token values.
+- The app still does not read localStorage or sessionStorage.
+- The app still does not extract HTML.
 - The app still does not parse the Usage page.
 - Settings page with explicit save and clear-local-data.
-- Debug page with persistence diagnostics, WebView status, and Stage 3 safety
+- Debug page with persistence diagnostics, WebView status, and Stage 4 safety
   flags.
 - Clean, feature-first layered architecture.
 
@@ -50,11 +56,15 @@ Stage 3: WebView login container is complete.
 - WebView controls for login page, usage placeholder, reload, back, forward, and
   app WebView data clearing.
 - Sanitized WebView URL display that hides query and fragment values.
+- Manual WebView visible text extraction with HTTPS and host allowlist checks.
+- Redaction for emails, bearer tokens, suspected API keys, token-like strings,
+  and secret/password/token key-value values.
+- Local cache for the most recent redacted extracted preview only.
 - Debug information page with storage diagnostics.
 - Clear local data with confirmation.
 - Light and dark Material 3 themes.
-- Unit and widget tests for the Stage 2 persistence flow and Stage 3 WebView
-  security boundary.
+- Unit and widget tests for persistence, WebView safety, extraction redaction,
+  URL safety, and Stage 4 UI.
 
 ## Architecture
 
@@ -70,11 +80,18 @@ The quota feature depends on a `QuotaRepository` abstraction. Stage 2 ships a
 the UI talks through use cases and controllers rather than directly reading data
 sources or `shared_preferences`.
 
-The auth feature owns the Stage 3 WebView login container through
+The auth feature owns the WebView login container through
 `WebAuthConfig`, `WebAuthRepository`, `WebViewAuthController`, and the
 `WebViewLoginPage`. It is intentionally separate from the quota data source and
 parser pipeline so login navigation cannot accidentally become quota
 extraction.
+
+The extraction feature owns the Stage 4 manual text extraction flow through
+`PageTextExtractionRepository`, `WebViewTextExtractionDataSource`,
+`LocalExtractedTextDataSource`, `TextRedactor`, and
+`PageTextExtractionController`. It reads only `document.body.innerText` after a
+user action and never reads cookies, tokens, storage, HTML, request headers, or
+network responses.
 
 Future source placeholders include:
 
@@ -87,8 +104,9 @@ Future source placeholders include:
 More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/security.md](docs/security.md), [docs/roadmap.md](docs/roadmap.md), and
 [docs/stage1_report.md](docs/stage1_report.md). The Stage 2 implementation is
-summarized in [docs/stage2_report.md](docs/stage2_report.md), and Stage 3 is
-summarized in [docs/stage3_report.md](docs/stage3_report.md).
+summarized in [docs/stage2_report.md](docs/stage2_report.md), Stage 3 is
+summarized in [docs/stage3_report.md](docs/stage3_report.md), and Stage 4 is
+summarized in [docs/stage4_report.md](docs/stage4_report.md).
 
 ## Project Structure
 
@@ -105,13 +123,15 @@ summarized in [docs/stage3_report.md](docs/stage3_report.md).
 │   ├── security.md
 │   ├── stage1_report.md
 │   ├── stage2_report.md
-│   └── stage3_report.md
+│   ├── stage3_report.md
+│   └── stage4_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
 │   ├── features/
 │   │   ├── auth/
 │   │   ├── debug/
+│   │   ├── extraction/
 │   │   ├── quota/
 │   │   └── settings/
 │   ├── main.dart
@@ -156,9 +176,10 @@ flutter run
 
 ## Development Notes
 
-- Stage 3 WebView network access is limited to user-driven official-site
+- Stage 4 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
-- Stage 3 uses mock quota data only and persists only mock quota data/settings.
+- Stage 4 uses mock quota data only and persists mock quota data/settings plus
+  the last redacted extracted text preview.
 - Do not add quota extraction or parsing without a new security review.
 - Do not store credentials.
 
@@ -167,7 +188,7 @@ flutter run
 - [x] Stage 1: Architecture + Mock UI
 - [x] Stage 2: Local persistence for snapshots and settings
 - [x] Stage 3: WebView login container
-- [ ] Stage 4: Usage page text extraction
+- [x] Stage 4: Usage page text extraction
 - [ ] Stage 5: Quota parser with confidence levels
 - [ ] Stage 6: Real manual refresh flow
 - [ ] Stage 7: Foreground auto refresh
@@ -181,12 +202,15 @@ flutter run
 - No password storage.
 - No cookie reading or upload.
 - No token scraping.
-- No WebView HTML or body text extraction in Stage 3.
-- No real quota parser or refresh in Stage 3.
+- No localStorage or sessionStorage reading.
+- No WebView HTML extraction.
+- Manual WebView text extraction reads only `document.body.innerText`.
+- Extracted text remains local and only a redacted preview is saved.
+- No real quota parser or refresh in Stage 4.
 - No analytics SDK by default.
-- Debug raw text should be treated as sensitive in future real-data stages.
+- Debug extracted text should be treated as sensitive even after redaction.
 
-See [docs/security.md](docs/security.md) for the Stage 3 security boundary.
+See [docs/security.md](docs/security.md) for the Stage 4 security boundary.
 
 ## License
 

@@ -19,8 +19,10 @@ The app does not read cookies, tokens, HTML, page text, or quota values.
 
 ## Stage 4: Usage Page Text Extraction
 
-Extract usage page text inside the reviewed boundary. Avoid logging raw text by
-default.
+Implemented manual, user-triggered visible page text extraction from the current
+WebView page. The app reads only `document.body.innerText`, blocks empty,
+non-HTTPS, and unknown-host URLs, redacts extracted text locally, and stores
+only the latest bounded redacted preview for debugging.
 
 ## Stage 5: Parser
 
@@ -61,8 +63,8 @@ appropriate for this use case.
 - [x] Stage 1: Architecture + Mock UI
 - [x] Stage 2: Local persistence
 - [x] Stage 3: WebView login container
-- [ ] Stage 4: Usage page text extraction
-- [ ] Stage 5: Quota parser
+- [x] Stage 4: Usage page text extraction
+- [ ] Stage 5: Quota parser with confidence levels
 - [ ] Stage 6: Real manual refresh flow
 - [ ] Stage 7: Foreground auto refresh
 - [ ] Stage 8: Background refresh / notification

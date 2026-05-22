@@ -4,12 +4,17 @@ import 'package:flutter/material.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/storage/json_storage.dart';
+import 'core/storage/memory_json_storage.dart';
 import 'core/storage/shared_preferences_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/time/clock.dart';
 import 'features/auth/presentation/controllers/webview_auth_controller.dart';
 import 'features/auth/presentation/pages/webview_login_page.dart';
 import 'features/debug/presentation/pages/debug_page.dart';
+import 'features/extraction/data/datasources/local_extracted_text_datasource.dart';
+import 'features/extraction/data/repositories/page_text_extraction_repository_impl.dart';
+import 'features/extraction/domain/repositories/page_text_extraction_repository.dart';
+import 'features/extraction/presentation/controllers/page_text_extraction_controller.dart';
 import 'features/quota/data/datasources/local_quota_datasource.dart';
 import 'features/quota/data/datasources/mock_quota_datasource.dart';
 import 'features/quota/data/repositories/persistent_quota_repository.dart';
@@ -27,11 +32,13 @@ class QuotaAnalyticsApp extends StatelessWidget {
     super.key,
     this.quotaRepository,
     this.settingsRepository,
+    this.pageTextExtractionRepository,
     this.clock,
   });
 
   final QuotaRepository? quotaRepository;
   final SettingsRepository? settingsRepository;
+  final PageTextExtractionRepository? pageTextExtractionRepository;
   final Clock? clock;
 
   @override
@@ -44,6 +51,7 @@ class QuotaAnalyticsApp extends StatelessWidget {
       home: QuotaShell(
         quotaRepository: quotaRepository,
         settingsRepository: settingsRepository,
+        pageTextExtractionRepository: pageTextExtractionRepository,
         clock: clock,
       ),
     );
@@ -55,11 +63,13 @@ class QuotaShell extends StatefulWidget {
     super.key,
     this.quotaRepository,
     this.settingsRepository,
+    this.pageTextExtractionRepository,
     this.clock,
   });
 
   final QuotaRepository? quotaRepository;
   final SettingsRepository? settingsRepository;
+  final PageTextExtractionRepository? pageTextExtractionRepository;
   final Clock? clock;
 
   @override
@@ -131,6 +141,7 @@ class _QuotaShellState extends State<QuotaShell> {
         controller: quotaController,
         settingsController: settingsController,
         webAuthController: controllers.webAuthController,
+        pageTextExtractionController: controllers.pageTextExtractionController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -192,6 +203,7 @@ class _QuotaShellState extends State<QuotaShell> {
     if (_selectedIndex == 2 || _webLoginPage != null) {
       return _webLoginPage ??= WebViewLoginPage(
         controller: controllers.webAuthController,
+        pageTextExtractionController: controllers.pageTextExtractionController,
       );
     }
     return const SizedBox.shrink();
@@ -218,17 +230,27 @@ class _QuotaShellState extends State<QuotaShell> {
           ),
           clock: effectiveClock,
         );
+    final pageTextExtractionRepository =
+        widget.pageTextExtractionRepository ??
+        PageTextExtractionRepositoryImpl(
+          localDataSource: LocalExtractedTextDataSource(storage: storage!),
+          clock: effectiveClock,
+        );
 
     final controllers = _AppControllers(
       quotaController: QuotaController(repository: quotaRepository),
       settingsController: SettingsController(repository: settingsRepository),
       webAuthController: WebViewAuthController(clock: effectiveClock),
+      pageTextExtractionController: PageTextExtractionController(
+        repository: pageTextExtractionRepository,
+      ),
     );
     _controllers = controllers;
 
     await Future.wait([
       controllers.quotaController.loadLatestSnapshot(),
       controllers.settingsController.load(),
+      controllers.pageTextExtractionController.loadLastExtractedPageText(),
     ]);
 
     return controllers;
@@ -236,7 +258,7 @@ class _QuotaShellState extends State<QuotaShell> {
 
   Future<JsonStorage?> _createStorageIfNeeded() async {
     if (widget.quotaRepository != null && widget.settingsRepository != null) {
-      return null;
+      return MemoryJsonStorage();
     }
     return SharedPreferencesStorage.create();
   }
@@ -248,6 +270,7 @@ class _QuotaShellState extends State<QuotaShell> {
     }
     await controllers.quotaController.clearLocalData();
     await controllers.settingsController.clear();
+    await controllers.pageTextExtractionController.clearExtractedPageText();
   }
 
   String _titleForIndex(int index) {
@@ -265,15 +288,18 @@ class _AppControllers {
     required this.quotaController,
     required this.settingsController,
     required this.webAuthController,
+    required this.pageTextExtractionController,
   });
 
   final QuotaController quotaController;
   final SettingsController settingsController;
   final WebViewAuthController webAuthController;
+  final PageTextExtractionController pageTextExtractionController;
 
   void dispose() {
     quotaController.dispose();
     settingsController.dispose();
     webAuthController.dispose();
+    pageTextExtractionController.dispose();
   }
 }

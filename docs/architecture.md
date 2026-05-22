@@ -3,12 +3,13 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 3 keeps quota data mock-only while adding a WebView login
-container for user-driven official-site login.
+information. Stage 4 keeps quota data mock-only while adding manual WebView
+visible text extraction for local parser development.
 
-Stage 3 does not implement real usage reading, cookies, tokens, WebView
-scraping, backend calls, quota parsing, or automatic refresh. The WebView login
-container is intentionally separate from quota extraction.
+Stage 4 does not implement quota parsing, real quota refresh, cookies, tokens,
+storage reads, HTML extraction, backend calls, or automatic refresh. The WebView
+login container, text extraction flow, and future parser remain intentionally
+separate.
 
 ## Layers
 
@@ -23,8 +24,10 @@ The app uses a feature-first Clean Architecture layout:
 - `features/settings`: persisted settings domain, data, controller, and UI.
 - `features/debug`: local debug view for mock state, WebView status, and safety
   notices.
-- `features/auth`: Stage 3 WebView login container split into domain, data, and
+- `features/auth`: WebView login container split into domain, data, and
   presentation layers.
+- `features/extraction`: Stage 4 manual page text extraction, redaction, local
+  redacted preview storage, controller state, and widgets.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -80,12 +83,15 @@ The persistence layer is intentionally small:
 - `LocalStorageKeys`: the only local keys the app may write or clear.
 - `LocalQuotaDataSource`: serializes/deserializes latest snapshot and history.
 - `LocalSettingsDataSource`: serializes/deserializes app settings.
+- `LocalExtractedTextDataSource`: serializes/deserializes the latest redacted
+  extracted text preview.
 
 Current keys:
 
 - `quota.latest_snapshot.v1`
 - `quota.snapshot_history.v1`
 - `settings.app_settings.v1`
+- `extraction.last_page_text.v1`
 
 Snapshot history is newest-first and capped at 100 records.
 
@@ -104,7 +110,7 @@ The data layer owns JSON encoding and `shared_preferences` access.
 
 ## Auth Feature
 
-The auth feature owns the Stage 3 login container:
+The auth feature owns the WebView login container:
 
 - `WebAuthConfig`: central URL configuration for the login page and usage page
   placeholder.
@@ -123,14 +129,52 @@ The auth feature owns the Stage 3 login container:
 The auth feature does not expose cookies, tokens, page HTML, page body text,
 localStorage, sessionStorage, or quota data to the quota feature.
 
+## Extraction Feature
+
+The extraction feature owns Stage 4 manual page text extraction:
+
+- `ExtractedPageText`: structured result containing sanitized URL, title,
+  redacted preview, redaction counts, source, safety status, timestamp, and
+  optional safe error.
+- `ExtractionSource`: currently only `webViewManual`.
+- `ExtractionSafetyStatus`: `allowed`, `blockedNonHttps`,
+  `blockedUnknownHost`, and `failed`.
+- `PageTextExtractionRepository`: domain contract for attaching a current page
+  reader, extracting, loading the last result, and clearing the local cache.
+- `WebViewTextExtractionDataSource`: `webview_flutter` adapter that runs only
+  the `document.body.innerText` JavaScript snippet after user action.
+- `LocalExtractedTextDataSource`: app-owned local storage for the latest
+  redacted preview only.
+- `PageTextExtractionRepositoryImpl`: URL safety check, text redaction, result
+  construction, and persistence orchestration.
+- `PageTextExtractionController`: presentation state for extraction progress,
+  messages, last result, and clear action.
+- `ExtractionStatusCard` and `ExtractedTextPreview`: WebView page UI for manual
+  extraction, redacted preview, copy, and clear controls.
+
+Shared security helpers live in `core/security`:
+
+- `AllowedWebHosts`: conservative HTTPS host allowlist.
+- `UrlSanitizer`: removes query and fragment values.
+- `TextRedactor`: redacts emails, bearer tokens, suspected API keys,
+  token-like strings, and secret/password/token key-value values.
+
+## Why Extraction And Parser Are Separate
+
+Extraction is a controlled acquisition boundary; parsing is a data
+interpretation boundary. Stage 4 only acquires bounded, redacted visible text
+for local debugging. Stage 5 can build a parser against that structured
+`ExtractedPageText` output without gaining access to cookies, tokens, WebView
+storage, HTML, network responses, or background execution.
+
 ## Why Login And Parser Are Separate
 
 The login container is a security boundary, while the quota parser is a data
-interpretation boundary. Stage 3 implements only the first boundary so users can
-manually sign in without the app touching credentials. Stage 4 and Stage 5 must
-go through separate review before any page text extraction or parser logic is
-added. Keeping these concerns separate reduces the chance that navigation state
-or WebView storage access becomes an implicit quota data source.
+interpretation boundary. The WebView login feature lets users manually sign in
+without the app touching credentials. Stage 4 adds a separate reviewed
+innerText-only extraction boundary, and Stage 5 must remain a separate parser
+boundary. Keeping these concerns separate reduces the chance that navigation
+state or WebView storage access becomes an implicit quota data source.
 
 ## Domain Independence
 
@@ -144,12 +188,13 @@ adapter, a reviewed WebView source, or desktop agents without changing widgets.
 Mock-only scope keeps the early milestones safe and testable:
 
 - User-driven WebView login only, with no app access to credentials.
-- No cookie or token handling.
+- User-triggered visible text extraction only, with no cookie or token handling.
 - No network parsing.
 - No hidden background refresh.
 - Fast local unit and widget tests.
 - Clear UI and domain shape before security-sensitive integrations.
-- Local persistence stores only mock quota data and user settings.
+- Local persistence stores only mock quota data, user settings, and the latest
+  redacted extracted text preview.
 
 ## Future Replacements
 

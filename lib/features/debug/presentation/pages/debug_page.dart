@@ -6,6 +6,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/security/sensitive_data_policy.dart';
 import '../../../../core/utils/date_time_format.dart';
 import '../../../auth/presentation/controllers/webview_auth_controller.dart';
+import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
+import '../../../extraction/presentation/widgets/extracted_text_preview.dart';
 import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../../quota/domain/entities/quota_source.dart';
@@ -18,12 +20,14 @@ class DebugPage extends StatelessWidget {
     required this.controller,
     required this.settingsController,
     required this.webAuthController,
+    required this.pageTextExtractionController,
     required this.onClearLocalData,
   });
 
   final QuotaController controller;
   final SettingsController settingsController;
   final WebViewAuthController webAuthController;
+  final PageTextExtractionController pageTextExtractionController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -33,6 +37,7 @@ class DebugPage extends StatelessWidget {
         controller,
         settingsController,
         webAuthController,
+        pageTextExtractionController,
       ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
@@ -139,6 +144,12 @@ class DebugPage extends StatelessWidget {
                   'Token reading ${_disabledLabel(SensitiveDataPolicy.tokenReadingEnabled)}',
                 ),
                 Text(
+                  'localStorage reading ${_disabledLabel(SensitiveDataPolicy.localStorageReadingEnabled)}',
+                ),
+                Text(
+                  'sessionStorage reading ${_disabledLabel(SensitiveDataPolicy.sessionStorageReadingEnabled)}',
+                ),
+                Text(
                   'HTML extraction ${_disabledLabel(SensitiveDataPolicy.htmlExtractionEnabled)}',
                 ),
                 Text(
@@ -147,6 +158,95 @@ class DebugPage extends StatelessWidget {
                 Text(
                   'Background refresh ${_disabledLabel(SensitiveDataPolicy.backgroundRefreshEnabled)}',
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DebugCard(
+              title: 'Stage 4 Text Extraction',
+              children: [
+                const _DebugRow(
+                  label: 'Text extraction enabled',
+                  value: 'true',
+                ),
+                _DebugRow(
+                  label: 'Extracted text cache exists',
+                  value: pageTextExtractionController.hasCachedText.toString(),
+                ),
+                _DebugRow(
+                  label: 'Last extraction time',
+                  value: formatDateTime(
+                    pageTextExtractionController.lastExtraction?.extractedAt,
+                  ),
+                ),
+                _DebugRow(
+                  label: 'Last extraction URL',
+                  value:
+                      pageTextExtractionController
+                          .lastExtraction
+                          ?.sanitizedUrl ??
+                      'none',
+                ),
+                _DebugRow(
+                  label: 'Last extraction safety status',
+                  value:
+                      pageTextExtractionController
+                          .lastExtraction
+                          ?.safetyStatus
+                          .label ??
+                      'none',
+                ),
+                _DebugRow(
+                  label: 'Last extraction error',
+                  value:
+                      pageTextExtractionController
+                          .lastExtraction
+                          ?.errorMessage ??
+                      pageTextExtractionController.lastError ??
+                      'none',
+                ),
+                _DebugRow(
+                  label: 'Original length',
+                  value:
+                      pageTextExtractionController
+                          .lastExtraction
+                          ?.originalLength
+                          .toString() ??
+                      '0',
+                ),
+                _DebugRow(
+                  label: 'Redacted length',
+                  value:
+                      pageTextExtractionController
+                          .lastExtraction
+                          ?.redactedLength
+                          .toString() ??
+                      '0',
+                ),
+                _DebugRow(
+                  label: 'Truncated',
+                  value:
+                      pageTextExtractionController.lastExtraction?.truncated
+                          .toString() ??
+                      'false',
+                ),
+                _DebugRow(
+                  label: 'Redaction counts',
+                  value: _redactionCounts(pageTextExtractionController),
+                ),
+                const SizedBox(height: 8),
+                const Text('Last extracted text preview'),
+                const SizedBox(height: 8),
+                ExtractedTextPreview(
+                  extraction: pageTextExtractionController.lastExtraction,
+                ),
+                const SizedBox(height: 8),
+                const Text('Cookie reading disabled'),
+                const Text('Token reading disabled'),
+                const Text('localStorage reading disabled'),
+                const Text('sessionStorage reading disabled'),
+                const Text('HTML extraction disabled'),
+                const Text('Quota parsing disabled'),
+                const Text('Background refresh disabled'),
               ],
             ),
             const SizedBox(height: 12),
@@ -180,7 +280,9 @@ class DebugPage extends StatelessWidget {
                 Text('WebView login container only'),
                 Text('No token access'),
                 Text('No cookie reading'),
-                Text('No quota extraction'),
+                Text('No localStorage or sessionStorage reading'),
+                Text('Manual visible text extraction only'),
+                Text('No quota parsing'),
                 Text('No background refresh'),
                 SizedBox(height: 8),
                 Text(AppConstants.stageNotice),
@@ -196,6 +298,14 @@ class DebugPage extends StatelessWidget {
     return enabled ? 'enabled' : 'disabled';
   }
 
+  static String _redactionCounts(PageTextExtractionController controller) {
+    final extraction = controller.lastExtraction;
+    if (extraction == null) {
+      return 'email 0, token 0, apiKey 0, secret 0';
+    }
+    return 'email ${extraction.redactedEmailCount}, token ${extraction.redactedTokenCount}, apiKey ${extraction.redactedApiKeyCount}, secret ${extraction.redactedSecretCount}';
+  }
+
   Future<void> _confirmClear(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -203,7 +313,7 @@ class DebugPage extends StatelessWidget {
         return AlertDialog(
           title: const Text('Clear local data?'),
           content: const Text(
-            'This removes only this app\'s saved mock quota snapshots, history, and settings.',
+            'This removes only this app\'s saved mock quota snapshots, settings, and redacted extracted text preview.',
           ),
           actions: [
             TextButton(

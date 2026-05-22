@@ -6,6 +6,11 @@ import 'package:quota_analytics/features/auth/domain/entities/webview_clear_resu
 import 'package:quota_analytics/features/auth/domain/repositories/web_auth_repository.dart';
 import 'package:quota_analytics/features/auth/presentation/controllers/webview_auth_controller.dart';
 import 'package:quota_analytics/features/auth/presentation/pages/webview_login_page.dart';
+import 'package:quota_analytics/features/extraction/domain/entities/extracted_page_text.dart';
+import 'package:quota_analytics/features/extraction/domain/entities/extraction_safety_status.dart';
+import 'package:quota_analytics/features/extraction/domain/entities/extraction_source.dart';
+import 'package:quota_analytics/features/extraction/domain/repositories/page_text_extraction_repository.dart';
+import 'package:quota_analytics/features/extraction/presentation/controllers/page_text_extraction_controller.dart';
 import 'package:quota_analytics/features/quota/data/datasources/mock_quota_datasource.dart';
 import 'package:quota_analytics/features/quota/data/repositories/mock_quota_repository.dart';
 import 'package:quota_analytics/features/settings/data/mock_settings_repository.dart';
@@ -24,6 +29,7 @@ void main() {
         home: Scaffold(
           body: WebViewLoginPage(
             controller: controller,
+            pageTextExtractionController: _buildExtractionController(),
             webViewBuilder: (context, controller) {
               return const Center(child: Text('Fake WebView'));
             },
@@ -43,8 +49,17 @@ void main() {
       find.text('This app does not read cookies or tokens.'),
       findsOneWidget,
     );
-    expect(find.text('Stage 3 does not extract quota data.'), findsOneWidget);
+    expect(
+      find.text('Quota parsing is not implemented in this stage.'),
+      findsWidgets,
+    );
     expect(find.text('Open login page'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Extract Page Text'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Extract Page Text'), findsOneWidget);
     expect(find.text('Reload'), findsOneWidget);
     expect(find.text('Clear WebView data'), findsOneWidget);
 
@@ -54,7 +69,7 @@ void main() {
     expect(find.text('Fake WebView'), findsOneWidget);
   });
 
-  testWidgets('Web Login page displays Stage 3 no quota extraction notice', (
+  testWidgets('Web Login page displays Stage 4 extraction safety notice', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -64,6 +79,7 @@ void main() {
             controller: WebViewAuthController(
               repository: _FakeWebAuthRepository(),
             ),
+            pageTextExtractionController: _buildExtractionController(),
             webViewBuilder: (context, controller) {
               return const SizedBox.shrink();
             },
@@ -72,12 +88,23 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('login container only'), findsWidgets);
-    expect(find.text('No quota extraction.'), findsOneWidget);
-    expect(find.text('Stage 3 does not extract quota data.'), findsOneWidget);
+    expect(
+      find.textContaining('manual page text extraction only'),
+      findsWidgets,
+    );
+    expect(
+      find.text(
+        'No cookies, tokens, localStorage, sessionStorage, or HTML are accessed.',
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.text('Extracted text is redacted and kept local for debugging.'),
+      findsWidgets,
+    );
   });
 
-  testWidgets('Debug page shows Stage 3 safety status', (tester) async {
+  testWidgets('Debug page shows Stage 4 safety status', (tester) async {
     SharedPreferences.setMockInitialValues({});
 
     await tester.pumpWidget(
@@ -106,10 +133,24 @@ void main() {
     expect(find.text('WebView feature enabled'), findsOneWidget);
     expect(find.text('Cookie reading disabled'), findsOneWidget);
     expect(find.text('Token reading disabled'), findsOneWidget);
+    expect(find.text('localStorage reading disabled'), findsWidgets);
+    expect(find.text('sessionStorage reading disabled'), findsWidgets);
     expect(find.text('HTML extraction disabled'), findsOneWidget);
     expect(find.text('Quota parsing disabled'), findsOneWidget);
     expect(find.text('Background refresh disabled'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Text extraction enabled'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Text extraction enabled'), findsOneWidget);
+    expect(find.text('Last extraction safety status'), findsOneWidget);
   });
+}
+
+PageTextExtractionController _buildExtractionController() {
+  return PageTextExtractionController(repository: _FakeExtractionRepository());
 }
 
 class _FakeWebAuthRepository implements WebAuthRepository {
@@ -145,4 +186,37 @@ class _FakeWebAuthRepository implements WebAuthRepository {
 
   @override
   Future<void> reload() async {}
+}
+
+class _FakeExtractionRepository implements PageTextExtractionRepository {
+  @override
+  void attachPageTextReader(CurrentPageTextReader reader) {}
+
+  @override
+  Future<void> clearExtractedPageText() async {}
+
+  @override
+  Future<ExtractedPageText> extractCurrentPageText() async {
+    return ExtractedPageText(
+      id: 'manual-webview-1',
+      sanitizedUrl: 'https://chatgpt.com/settings',
+      pageTitle: 'Settings',
+      redactedTextPreview: 'Usage [REDACTED_EMAIL]',
+      originalLength: 24,
+      redactedLength: 22,
+      redactedEmailCount: 1,
+      redactedTokenCount: 0,
+      redactedApiKeyCount: 0,
+      redactedSecretCount: 0,
+      truncated: false,
+      extractedAt: DateTime(2026, 1, 1, 12),
+      source: ExtractionSource.webViewManual,
+      safetyStatus: ExtractionSafetyStatus.allowed,
+    );
+  }
+
+  @override
+  Future<ExtractedPageText?> getLastExtractedPageText() async {
+    return null;
+  }
 }

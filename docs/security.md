@@ -1,5 +1,55 @@
 # Security
 
+## Stage 4 Page Text Extraction Boundary
+
+Stage 4 adds user-triggered page text extraction for local debugging only. The
+only page content the app is allowed to read is:
+
+```js
+(() => document.body ? document.body.innerText : '')();
+```
+
+The user must tap `Extract Page Text` from the Web Login page. The app does not
+extract on page load, app startup, timers, loops, background jobs, or navigation
+events.
+
+Stage 4 does not read or extract:
+
+- `document.cookie`
+- `localStorage`
+- `sessionStorage`
+- `indexedDB`
+- Access tokens, refresh tokens, session tokens, or authorization headers.
+- Page HTML, scripts, CSS, DOM structure, request headers, network requests, or
+  network responses.
+- Browser/system cookies, browser profiles, Keychain, Credential Manager, or
+  password manager data.
+
+Before extraction, the current URL must be present, HTTPS, and on the conservative
+allowlist: `chatgpt.com`, `chat.openai.com`, `openai.com`, or
+`platform.openai.com`. Query strings and fragments are removed before the URL is
+shown or persisted. Unknown hosts and non-HTTPS pages are blocked by default.
+
+The extracted text is immediately redacted in memory before display or local
+storage. Redaction covers:
+
+- Email addresses -> `[REDACTED_EMAIL]`
+- Bearer tokens -> `Bearer [REDACTED_TOKEN]`
+- `sk-`-prefixed suspected API keys -> `[REDACTED_API_KEY]`
+- Long token-like strings -> `[REDACTED_TOKEN]`
+- Values near `session`, `access`, `refresh`, `token`, `secret`, and `password`
+  labels -> `[REDACTED_SECRET]`
+
+The debug preview is capped at 2000 characters. Stage 4 saves only the most
+recent redacted preview under the app-owned key
+`extraction.last_page_text.v1`; it never saves the raw unredacted page text.
+Clear local data removes this extracted preview along with mock quota and
+settings data.
+
+Redacted debug previews can still contain account or usage context. Treat them
+as local sensitive debugging data, do not upload them, and avoid using real
+account pages for automated tests.
+
 ## Stage 3 WebView Boundary
 
 Stage 3 adds a WebView login container so the user can manually open the
@@ -37,8 +87,8 @@ and WebView cookies where the platform supports those operations. It does not
 clear system browser data and does not remove this app's saved mock quota
 snapshots, history, or settings.
 
-If Stage 4 introduces page text extraction, it needs a new security review
-before any raw page text is displayed, logged, persisted, parsed, or exported.
+Stage 4 extends this boundary with manual `document.body.innerText` extraction
+only. It still does not read cookies, tokens, storage, HTML, or network data.
 
 ## Stage 2 Boundary
 
@@ -75,6 +125,7 @@ The only keys the app owns are:
 - `quota.latest_snapshot.v1`
 - `quota.snapshot_history.v1`
 - `settings.app_settings.v1`
+- `extraction.last_page_text.v1`
 
 Clear local data removes only those keys. It does not remove project files,
 Flutter caches, emulator files, browser data, credentials, or any system
@@ -99,18 +150,20 @@ the app itself does not call external usage services.
 ## WebView Implementation Notes
 
 Stage 3 uses `webview_flutter` for the embedded WebView. JavaScript execution is
-enabled because modern official login pages require it, but the app does not
-register JavaScript channels and does not call `runJavaScript` to read page
-content. Web content permission requests are denied by the app, and Android only
-adds the normal `INTERNET` permission required for HTTPS WebView navigation.
+enabled because modern official login pages require it. Stage 4 uses
+`runJavaScriptReturningResult` only for the `document.body.innerText` snippet
+listed above. The app does not register JavaScript channels and does not read
+cookies, storage, HTML, request headers, or network responses. Web content
+permission requests are denied by the app, and Android only adds the normal
+`INTERNET` permission required for HTTPS WebView navigation.
 
 ## Debug Raw Text Risk
 
-Stage 2 debug text is mock-only. In later parser stages, raw extracted text may
-contain account identifiers or usage details. Treat raw text as sensitive before
-deciding whether it can be logged, displayed, persisted, or cleared. It must be
-opt-in, redacted where possible, and never uploaded without explicit user
-action.
+Stage 2 debug text is mock-only. Stage 4 extracted text may contain account
+identifiers or usage details even after redaction. The app displays and stores
+only a bounded redacted preview, and never logs or uploads the raw page text.
+Any future raw-text parser input must go through another review before it can be
+persisted, exported, or uploaded.
 
 ## Device Testing
 

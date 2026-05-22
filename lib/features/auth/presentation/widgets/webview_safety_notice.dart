@@ -23,7 +23,7 @@ class WebViewSafetyNotice extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Stage 3: login container only',
+                    'Stage 4: manual page text extraction only',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w700,
@@ -46,11 +46,15 @@ class WebViewSafetyNotice extends StatelessWidget {
               style: TextStyle(color: colorScheme.onSecondaryContainer),
             ),
             Text(
-              'Stage 3 does not extract quota data.',
+              'No cookies, tokens, localStorage, sessionStorage, or HTML are accessed.',
               style: TextStyle(color: colorScheme.onSecondaryContainer),
             ),
             Text(
-              'No quota extraction.',
+              'Quota parsing is not implemented in this stage.',
+              style: TextStyle(color: colorScheme.onSecondaryContainer),
+            ),
+            Text(
+              'Extracted text is redacted and kept local for debugging.',
               style: TextStyle(color: colorScheme.onSecondaryContainer),
             ),
             const SizedBox(height: 8),

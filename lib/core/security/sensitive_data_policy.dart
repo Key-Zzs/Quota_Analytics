@@ -3,14 +3,19 @@ class SensitiveDataPolicy {
 
   static const cookieReadingEnabled = false;
   static const tokenReadingEnabled = false;
+  static const localStorageReadingEnabled = false;
+  static const sessionStorageReadingEnabled = false;
   static const htmlExtractionEnabled = false;
   static const quotaParsingEnabled = false;
   static const backgroundRefreshEnabled = false;
   static const passwordStorageEnabled = false;
   static const webViewDataUploadEnabled = false;
+  static const pageTextExtractionEnabled = true;
 
   static const stage3BoundaryNotice =
       'Stage 3: login container only. No quota extraction, no cookie/token access.';
+  static const stage4BoundaryNotice =
+      'Stage 4: user-triggered document.body.innerText extraction only.';
 
   static String sanitizeUrlForDisplay(String? rawUrl) {
     final value = rawUrl?.trim();

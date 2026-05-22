@@ -24,7 +24,7 @@ class WebViewAuthDataSource {
            unawaited(request.deny());
            onNavigationBlocked(
              'about:blank',
-             'Web content requested a device permission. Stage 3 denies WebView permission requests.',
+             'Web content requested a device permission. Stage 4 denies WebView permission requests.',
            );
          },
        ) {
@@ -47,7 +47,7 @@ class WebViewAuthDataSource {
                 !config.isSupportedNavigationUrl(request.url)) {
               onNavigationBlocked(
                 request.url,
-                'Only HTTPS main-frame navigation is allowed in Stage 3.',
+                'Only HTTPS main-frame navigation is allowed in Stage 4.',
               );
               return NavigationDecision.prevent;
             }

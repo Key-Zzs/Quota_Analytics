@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../extraction/data/datasources/webview_text_extraction_datasource.dart';
+import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
+import '../../../extraction/presentation/widgets/extraction_status_card.dart';
 import '../../data/datasources/webview_auth_datasource.dart';
 import '../../data/repositories/webview_auth_repository.dart';
 import '../controllers/webview_auth_controller.dart';
@@ -14,9 +17,15 @@ typedef AuthWebViewBuilder =
     Widget Function(BuildContext context, WebViewAuthController controller);
 
 class WebViewLoginPage extends StatefulWidget {
-  const WebViewLoginPage({super.key, this.controller, this.webViewBuilder});
+  const WebViewLoginPage({
+    super.key,
+    this.controller,
+    this.pageTextExtractionController,
+    this.webViewBuilder,
+  });
 
   final WebViewAuthController? controller;
+  final PageTextExtractionController? pageTextExtractionController;
   final AuthWebViewBuilder? webViewBuilder;
 
   @override
@@ -48,6 +57,11 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
       _controller.attachRepository(
         WebViewAuthRepositoryImpl(dataSource: dataSource),
       );
+      widget.pageTextExtractionController?.attachPageTextReader(
+        WebViewTextExtractionDataSource(
+          webViewController: dataSource.webViewController,
+        ),
+      );
       _webView = WebViewWidget(controller: dataSource.webViewController);
     }
   }
@@ -63,7 +77,10 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _controller,
+      animation: Listenable.merge([
+        _controller,
+        widget.pageTextExtractionController,
+      ]),
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -88,6 +105,12 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
                 WebViewControls(controller: _controller),
                 const SizedBox(height: 12),
                 WebViewStatusBar(controller: _controller),
+                if (widget.pageTextExtractionController != null) ...[
+                  const SizedBox(height: 12),
+                  ExtractionStatusCard(
+                    controller: widget.pageTextExtractionController!,
+                  ),
+                ],
                 const SizedBox(height: 12),
                 _WebViewFrame(
                   height: webViewHeight,

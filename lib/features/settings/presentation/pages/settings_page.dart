@@ -119,7 +119,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Clears saved mock snapshots, snapshot history, and persisted settings.',
+                      'Clears saved mock snapshots, snapshot history, persisted settings, and redacted extracted text preview.',
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
@@ -146,7 +146,7 @@ class SettingsPage extends StatelessWidget {
         return AlertDialog(
           title: const Text('Clear local data?'),
           content: const Text(
-            'This removes only this app\'s saved mock quota snapshots, history, and settings.',
+            'This removes only this app\'s saved mock quota snapshots, history, settings, and redacted extracted text preview.',
           ),
           actions: [
             TextButton(

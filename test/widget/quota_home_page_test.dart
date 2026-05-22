@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quota_analytics/app.dart';
 import 'package:quota_analytics/core/storage/local_storage_keys.dart';
 import 'package:quota_analytics/core/time/clock.dart';
+import 'package:quota_analytics/features/extraction/data/models/extracted_page_text_model.dart';
+import 'package:quota_analytics/features/extraction/domain/entities/extraction_safety_status.dart';
+import 'package:quota_analytics/features/extraction/domain/entities/extraction_source.dart';
 import 'package:quota_analytics/features/quota/data/datasources/mock_quota_datasource.dart';
 import 'package:quota_analytics/features/quota/data/models/quota_snapshot_model.dart';
 import 'package:quota_analytics/features/quota/data/repositories/mock_quota_repository.dart';
@@ -22,7 +25,7 @@ void main() {
     expect(find.text('5-hour window'), findsOneWidget);
     expect(find.text('Weekly window'), findsOneWidget);
     expect(
-      find.textContaining('Stage 3 WebView Login Container'),
+      find.textContaining('Stage 4: manual page text extraction only'),
       findsOneWidget,
     );
 
@@ -137,10 +140,27 @@ void main() {
         updatedAt: DateTime(2026, 1, 1, 13),
       ),
     );
+    final extraction = ExtractedPageTextModel(
+      id: 'manual-webview-1',
+      sanitizedUrl: 'https://chatgpt.com/settings',
+      pageTitle: 'Settings',
+      redactedTextPreview: 'Cached [REDACTED_EMAIL]',
+      originalLength: 24,
+      redactedLength: 24,
+      redactedEmailCount: 1,
+      redactedTokenCount: 0,
+      redactedApiKeyCount: 0,
+      redactedSecretCount: 0,
+      truncated: false,
+      extractedAt: DateTime(2026, 1, 1, 14),
+      source: ExtractionSource.webViewManual,
+      safetyStatus: ExtractionSafetyStatus.allowed,
+    );
     SharedPreferences.setMockInitialValues({
       LocalStorageKeys.quotaLatestSnapshot: jsonEncode(snapshot.toJson()),
       LocalStorageKeys.quotaSnapshotHistory: jsonEncode([snapshot.toJson()]),
       LocalStorageKeys.appSettings: jsonEncode(settings.toJson()),
+      LocalStorageKeys.extractedPageText: jsonEncode(extraction.toJson()),
     });
 
     await tester.pumpWidget(
@@ -152,8 +172,18 @@ void main() {
 
     expect(find.text('1'), findsOneWidget);
     expect(find.text('60 minutes'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Cached [REDACTED_EMAIL]'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Cached [REDACTED_EMAIL]'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Clear local data'));
+    await tester.scrollUntilVisible(
+      find.text('Clear local data'),
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Clear local data'));
     await tester.pumpAndSettle();
@@ -163,6 +193,7 @@ void main() {
     expect(find.text('Local data cleared'), findsOneWidget);
     expect(find.text('Off'), findsOneWidget);
     expect(find.text('0'), findsWidgets);
+    expect(find.text('Cached [REDACTED_EMAIL]'), findsNothing);
   });
 }
 
