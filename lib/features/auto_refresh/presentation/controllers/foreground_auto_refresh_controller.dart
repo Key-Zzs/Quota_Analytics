@@ -110,6 +110,7 @@ class ForegroundAutoRefreshController extends ChangeNotifier
   bool _isCheckingOrRefreshing = false;
   bool _registeredLifecycleObserver = false;
   ReloadCancellationToken? _activeReloadCancellation;
+  DateTime? _lastManualRefreshSyncedStartedAt;
 
   AutoRefreshState get state => _state;
   AppLifecycleState get lifecycleState => _lifecycleState;
@@ -188,15 +189,16 @@ class ForegroundAutoRefreshController extends ChangeNotifier
           _reloadBeforeForegroundAutoRefreshPolicyProvider?.call() ??
           _settingsController.foregroundAutoReloadBeforeRefreshPolicy;
       final reloadUseCase = _reloadPageBeforeRefresh;
+      ReloadCancellationToken? refreshCancellation;
+      ReloadBeforeRefreshResult? reloadResult;
       if (reloadUseCase != null && reloadPolicy.enabled) {
-        final cancellation = ReloadCancellationToken();
-        _activeReloadCancellation = cancellation;
-        final reloadResult = await reloadUseCase(
+        refreshCancellation = ReloadCancellationToken();
+        _activeReloadCancellation = refreshCancellation;
+        reloadResult = await reloadUseCase(
           policy: reloadPolicy,
           isRefreshInProgress: _manualRefreshController.isBusy,
-          cancellationSignal: cancellation,
+          cancellationSignal: refreshCancellation,
         );
-        _activeReloadCancellation = null;
         if (!reloadResult.allowsExtraction) {
           final failedAt = reloadResult.finishedAt ?? _clock.now();
           final status = isForeground
@@ -238,7 +240,22 @@ class ForegroundAutoRefreshController extends ChangeNotifier
           isLoading: _webAuthController.isLoading,
           isReady: _webAuthController.isReady,
         ),
+        cancellationSignal: refreshCancellation,
+        reloadBeforeRefreshResult: reloadResult,
       );
+      if (!isForeground || (refreshCancellation?.isCancelled ?? false)) {
+        _state = _state.copyWith(
+          status: AutoRefreshStatus.skippedNotForeground,
+          nextEligibleAt: _policy.nextEligibleAt(
+            lastSuccessAt: _state.lastSuccessAt,
+            interval: _state.interval,
+          ),
+          lastError:
+              'Foreground auto refresh cancelled before completion because the app left foreground.',
+          isRefreshInProgress: false,
+        );
+        return;
+      }
       final manualResult = result.manualRefreshResult;
       final successAt = manualResult.finishedAt ?? _clock.now();
       if (result.savedSnapshot != null) {
@@ -296,10 +313,33 @@ class ForegroundAutoRefreshController extends ChangeNotifier
   }
 
   void _handleManualRefreshChanged() {
-    _state = _state.copyWith(
+    var nextState = _state.copyWith(
       isRefreshInProgress:
           _isCheckingOrRefreshing || _manualRefreshController.isBusy,
     );
+    final manualResult = _manualRefreshController.lastResult;
+    final manualSuccessAt = _manualRefreshSuccessAt(manualResult);
+    if (manualSuccessAt != null &&
+        manualResult.startedAt != _lastManualRefreshSyncedStartedAt) {
+      _lastManualRefreshSyncedStartedAt = manualResult.startedAt;
+      nextState = nextState.copyWith(
+        status: nextState.enabled
+            ? AutoRefreshStatus.success
+            : AutoRefreshStatus.disabled,
+        lastAttemptAt: manualResult.startedAt,
+        lastSuccessAt: manualSuccessAt,
+        nextEligibleAt: nextState.enabled
+            ? _policy.nextEligibleAt(
+                lastSuccessAt: manualSuccessAt,
+                interval: nextState.interval,
+              )
+            : null,
+        clearNextEligibleAt: !nextState.enabled,
+        clearCooldownUntil: true,
+        clearLastError: true,
+      );
+    }
+    _state = nextState;
     notifyListeners();
   }
 
@@ -348,6 +388,13 @@ class ForegroundAutoRefreshController extends ChangeNotifier
     return status == ManualRefreshStatus.saved ||
         (status == ManualRefreshStatus.awaitingUserConfirmation &&
             hasSuccessfulCandidate);
+  }
+
+  DateTime? _manualRefreshSuccessAt(ManualRefreshResult result) {
+    if (!_isSuccessfulManualResult(result.status, result.hasSnapshotCandidate)) {
+      return null;
+    }
+    return result.finishedAt ?? _clock.now();
   }
 
   String _errorForManualResult(ManualRefreshResult manualResult) {

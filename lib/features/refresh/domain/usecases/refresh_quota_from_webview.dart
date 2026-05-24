@@ -9,6 +9,7 @@ import '../../../parser/data/mappers/parse_result_to_quota_snapshot_mapper.dart'
 import '../../../parser/domain/entities/quota_parse_result.dart';
 import '../../../parser/domain/repositories/quota_parser_repository.dart';
 import '../../../quota/domain/entities/parser_confidence.dart';
+import '../../data/services/page_load_waiter.dart';
 import '../entities/manual_refresh_page_state.dart';
 import '../entities/manual_refresh_policy.dart';
 import '../entities/manual_refresh_result.dart';
@@ -28,6 +29,8 @@ class RefreshQuotaFromWebView {
     required this.manualRefreshRepository,
     required this.saveManualRefreshSnapshot,
     required this.clock,
+    this.postReloadParseRetryDelay = const Duration(seconds: 2),
+    this.postReloadParseRetryCount = 2,
   });
 
   final PageTextExtractionRepository extractionRepository;
@@ -36,11 +39,14 @@ class RefreshQuotaFromWebView {
   final ManualRefreshRepository manualRefreshRepository;
   final SaveManualRefreshSnapshot saveManualRefreshSnapshot;
   final Clock clock;
+  final Duration postReloadParseRetryDelay;
+  final int postReloadParseRetryCount;
 
   Future<ManualRefreshResult> call({
     required ManualRefreshPageState pageState,
     required ManualRefreshPolicy policy,
     ReloadBeforeRefreshResult? reloadBeforeRefreshResult,
+    ReloadCancellationSignal? cancellationSignal,
     ManualRefreshProgressCallback? onProgress,
   }) async {
     final startedAt = clock.now();
@@ -108,6 +114,17 @@ class RefreshQuotaFromWebView {
       );
     }
 
+    if (cancellationSignal?.isCancelled ?? false) {
+      return _saveFinal(
+        progress(
+          ManualRefreshStatus.failed,
+          errors: const [
+            'Refresh cancelled before extraction because the app left foreground.',
+          ],
+        ),
+      );
+    }
+
     ExtractedPageText extraction;
     try {
       progress(
@@ -126,7 +143,7 @@ class RefreshQuotaFromWebView {
       );
     }
 
-    final redactionSummary = _redactionSummaryFor(extraction);
+    var redactionSummary = _redactionSummaryFor(extraction);
     progress(
       ManualRefreshStatus.redactingText,
       safetyStatus: extraction.safetyStatus,
@@ -165,6 +182,7 @@ class RefreshQuotaFromWebView {
     }
 
     QuotaParseResult parseResult;
+    final retryWarnings = <String>[];
     try {
       progress(
         ManualRefreshStatus.parsing,
@@ -190,8 +208,131 @@ class RefreshQuotaFromWebView {
       );
     }
 
+    for (
+      var retry = 1;
+      _shouldRetryPostReloadParse(
+        retry: retry,
+        parseResult: parseResult,
+        reloadBeforeRefreshResult: reloadBeforeRefreshResult,
+      );
+      retry += 1
+    ) {
+      retryWarnings.add(
+        'Post-reload quota text was not ready; retried extraction after additional settle delay.',
+      );
+      if (postReloadParseRetryDelay > Duration.zero) {
+        await Future<void>.delayed(postReloadParseRetryDelay);
+      }
+      if (cancellationSignal?.isCancelled ?? false) {
+        return _saveFinal(
+          progress(
+            ManualRefreshStatus.failed,
+            safetyStatus: extraction.safetyStatus,
+            extraction: extraction,
+            parseResult: parseResult,
+            redactionSummary: redactionSummary,
+            warnings: retryWarnings,
+            errors: const [
+              'Refresh cancelled before retry extraction because the app left foreground.',
+            ],
+          ),
+        );
+      }
+
+      try {
+        progress(
+          ManualRefreshStatus.extractingText,
+          safetyStatus: ExtractionSafetyStatus.allowed,
+          warnings: retryWarnings,
+        );
+        extraction = await extractionRepository.extractCurrentPageText();
+      } on Object catch (error) {
+        return _saveFinal(
+          progress(
+            ManualRefreshStatus.extractionFailed,
+            warnings: retryWarnings,
+            errors: [
+              'Text extraction failed: ${SensitiveDataPolicy.sanitizeLogText(error.toString())}',
+            ],
+          ),
+        );
+      }
+
+      redactionSummary = _redactionSummaryFor(extraction);
+      progress(
+        ManualRefreshStatus.redactingText,
+        safetyStatus: extraction.safetyStatus,
+        extraction: extraction,
+        redactionSummary: redactionSummary,
+        warnings: retryWarnings,
+      );
+
+      if (!extraction.safetyStatus.isSuccess) {
+        final status = extraction.safetyStatus == ExtractionSafetyStatus.failed
+            ? ManualRefreshStatus.extractionFailed
+            : ManualRefreshStatus.blocked;
+        return _saveFinal(
+          progress(
+            status,
+            safetyStatus: extraction.safetyStatus,
+            extraction: extraction,
+            redactionSummary: redactionSummary,
+            warnings: retryWarnings,
+            errors: [
+              extraction.errorMessage ??
+                  'Current page failed the extraction safety check.',
+            ],
+          ),
+        );
+      }
+
+      if (!extraction.hasPreview) {
+        if (retry >= postReloadParseRetryCount) {
+          return _saveFinal(
+            progress(
+              ManualRefreshStatus.extractionFailed,
+              safetyStatus: extraction.safetyStatus,
+              extraction: extraction,
+              redactionSummary: redactionSummary,
+              warnings: retryWarnings,
+              errors: const ['Extracted visible page text was empty.'],
+            ),
+          );
+        }
+        continue;
+      }
+
+      try {
+        progress(
+          ManualRefreshStatus.parsing,
+          safetyStatus: extraction.safetyStatus,
+          extraction: extraction,
+          redactionSummary: redactionSummary,
+          warnings: retryWarnings,
+        );
+        parseResult = parserRepository.parse(
+          extraction.redactedTextPreview,
+          now: clock.now(),
+        );
+      } on Object catch (error) {
+        return _saveFinal(
+          progress(
+            ManualRefreshStatus.parseFailed,
+            safetyStatus: extraction.safetyStatus,
+            extraction: extraction,
+            redactionSummary: redactionSummary,
+            warnings: retryWarnings,
+            errors: [
+              'Quota parser failed: ${SensitiveDataPolicy.sanitizeLogText(error.toString())}',
+            ],
+          ),
+        );
+      }
+    }
+
     final snapshotCandidate = mapper.map(parseResult);
     final warnings = <String>[
+      ...retryWarnings,
       ...parseResult.warnings,
       if (redactionSummary.truncated)
         'Redacted text was truncated before parsing.',
@@ -303,5 +444,22 @@ class RefreshQuotaFromWebView {
         ExtractionSafetyStatus.blockedUnknownHost,
       AllowedWebHostStatus.failed => ExtractionSafetyStatus.failed,
     };
+  }
+
+  bool _shouldRetryPostReloadParse({
+    required int retry,
+    required QuotaParseResult parseResult,
+    required ReloadBeforeRefreshResult? reloadBeforeRefreshResult,
+  }) {
+    if (!(reloadBeforeRefreshResult?.allowsExtraction ?? false)) {
+      return false;
+    }
+    if (postReloadParseRetryCount <= 0 ||
+        retry > postReloadParseRetryCount) {
+      return false;
+    }
+    return !parseResult.success ||
+        parseResult.confidence == ParserConfidence.failed ||
+        parseResult.windows.isEmpty;
   }
 }

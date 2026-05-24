@@ -97,6 +97,7 @@ class ManualRefreshController extends ChangeNotifier {
     ManualRefreshPageState pageState, {
     bool reloadBeforeRefresh = true,
     ReloadCancellationSignal? reloadCancellationSignal,
+    ReloadBeforeRefreshResult? completedReloadBeforeRefreshResult,
   }) async {
     if (_isRefreshing || _isSaving) {
       return null;
@@ -108,7 +109,8 @@ class ManualRefreshController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      ReloadBeforeRefreshResult? reloadResult;
+      ReloadBeforeRefreshResult? reloadResult =
+          completedReloadBeforeRefreshResult;
       var effectivePageState = pageState;
       final reloadPolicy = reloadBeforeManualRefreshPolicy;
       final reloadUseCase = _reloadPageBeforeRefresh;
@@ -138,6 +140,7 @@ class ManualRefreshController extends ChangeNotifier {
         pageState: effectivePageState,
         policy: policy,
         reloadBeforeRefreshResult: reloadResult,
+        cancellationSignal: reloadCancellationSignal,
         onProgress: (progress) {
           _lastResult = progress;
           notifyListeners();

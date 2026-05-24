@@ -17,6 +17,8 @@ import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_result.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_status.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_result.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_status.dart';
 import 'package:quota_analytics/features/refresh/domain/repositories/manual_refresh_repository.dart';
 import 'package:quota_analytics/features/refresh/domain/usecases/refresh_quota_from_webview.dart';
 import 'package:quota_analytics/features/refresh/domain/usecases/save_manual_refresh_snapshot.dart';
@@ -149,6 +151,53 @@ void main() {
     expect(quotaRepository.saved, isNull);
   });
 
+  test(
+    'post-reload parser failure retries extraction before final result',
+    () async {
+      final manualRepository = _FakeManualRefreshRepository();
+      final quotaRepository = _FakeQuotaRepository();
+      final saveUseCase = _saveUseCase(quotaRepository, manualRepository, now);
+      final extractionRepository = _SequenceExtractionRepository([
+        _extraction(now, 'Loading analytics'),
+        _extraction(now, '5-hour window Used 10 of 50'),
+      ]);
+      final parserRepository = _SequenceParserRepository([
+        _parseResult(
+          now,
+          success: false,
+          confidence: ParserConfidence.failed,
+          windows: const [],
+        ),
+        _parseResult(now),
+      ]);
+      final useCase = _useCase(
+        extractionRepository: extractionRepository,
+        parserRepository: parserRepository,
+        manualRepository: manualRepository,
+        saveUseCase: saveUseCase,
+        now: now,
+        postReloadParseRetryDelay: Duration.zero,
+      );
+
+      final result = await useCase(
+        pageState: _safePage(),
+        policy: ManualRefreshPolicy.defaults(),
+        reloadBeforeRefreshResult: _completedReload(now),
+      );
+
+      expect(result.status, ManualRefreshStatus.awaitingUserConfirmation);
+      expect(result.snapshotCandidate, isNotNull);
+      expect(extractionRepository.extractCalls, 2);
+      expect(parserRepository.parseCalls, 2);
+      expect(
+        result.warnings,
+        contains(
+          'Post-reload quota text was not ready; retried extraction after additional settle delay.',
+        ),
+      );
+    },
+  );
+
   test('low confidence returns lowConfidence and does not save', () async {
     final quotaRepository = _FakeQuotaRepository();
     final result = await _defaultUseCase(
@@ -212,11 +261,12 @@ RefreshQuotaFromWebView _defaultUseCase({
 }
 
 RefreshQuotaFromWebView _useCase({
-  required _FakeExtractionRepository extractionRepository,
-  required _FakeParserRepository parserRepository,
+  required PageTextExtractionRepository extractionRepository,
+  required QuotaParserRepository parserRepository,
   required _FakeManualRefreshRepository manualRepository,
   required SaveManualRefreshSnapshot saveUseCase,
   required DateTime now,
+  Duration postReloadParseRetryDelay = const Duration(seconds: 2),
 }) {
   return RefreshQuotaFromWebView(
     extractionRepository: extractionRepository,
@@ -225,6 +275,7 @@ RefreshQuotaFromWebView _useCase({
     manualRefreshRepository: manualRepository,
     saveManualRefreshSnapshot: saveUseCase,
     clock: FixedClock(now),
+    postReloadParseRetryDelay: postReloadParseRetryDelay,
   );
 }
 
@@ -246,6 +297,17 @@ ManualRefreshPageState _safePage() {
     pageTitle: 'Usage',
     isLoading: false,
     isReady: true,
+  );
+}
+
+ReloadBeforeRefreshResult _completedReload(DateTime now) {
+  return ReloadBeforeRefreshResult(
+    status: ReloadBeforeRefreshStatus.completed,
+    startedAt: now,
+    finishedAt: now,
+    sanitizedUrl: 'https://chatgpt.com/usage',
+    warnings: const [],
+    errors: const [],
   );
 }
 
@@ -336,6 +398,47 @@ class _FakeParserRepository implements QuotaParserRepository {
   @override
   QuotaParseResult parse(String text, {DateTime? now}) {
     return result;
+  }
+}
+
+class _SequenceExtractionRepository implements PageTextExtractionRepository {
+  _SequenceExtractionRepository(this.results);
+
+  final List<ExtractedPageText> results;
+  int extractCalls = 0;
+
+  @override
+  void attachPageTextReader(CurrentPageTextReader reader) {}
+
+  @override
+  Future<void> clearExtractedPageText() async {}
+
+  @override
+  Future<ExtractedPageText> extractCurrentPageText() async {
+    final index = extractCalls >= results.length
+        ? results.length - 1
+        : extractCalls;
+    extractCalls += 1;
+    return results[index];
+  }
+
+  @override
+  Future<ExtractedPageText?> getLastExtractedPageText() async {
+    return null;
+  }
+}
+
+class _SequenceParserRepository implements QuotaParserRepository {
+  _SequenceParserRepository(this.results);
+
+  final List<QuotaParseResult> results;
+  int parseCalls = 0;
+
+  @override
+  QuotaParseResult parse(String text, {DateTime? now}) {
+    final index = parseCalls >= results.length ? results.length - 1 : parseCalls;
+    parseCalls += 1;
+    return results[index];
   }
 }
 

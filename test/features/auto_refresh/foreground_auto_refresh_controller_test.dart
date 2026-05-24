@@ -33,6 +33,7 @@ import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_status.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_policy.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_result.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_status.dart';
 import 'package:quota_analytics/features/refresh/domain/repositories/manual_refresh_repository.dart';
 import 'package:quota_analytics/features/refresh/domain/usecases/reload_page_before_refresh.dart';
 import 'package:quota_analytics/features/refresh/domain/usecases/refresh_quota_from_webview.dart';
@@ -130,6 +131,36 @@ void main() {
     harness.dispose();
   });
 
+  test('successful manual refresh resets next foreground auto refresh time', () async {
+    final harness = await _buildHarness(
+      manualExtractionText: '''
+5-hour window
+Used 10 of 50
+resets in 2 hours
+Weekly quota
+Used 200 of 1000
+resets on Monday
+''',
+    );
+
+    await harness.manualRefreshController.refreshFromCurrentPage(
+      const ManualRefreshPageState(
+        currentUrl: 'https://chatgpt.com/codex/cloud/settings/analytics',
+        pageTitle: 'Analytics',
+        isLoading: false,
+        isReady: true,
+      ),
+    );
+
+    expect(harness.controller.state.lastAttemptAt, DateTime(2026, 1, 1, 12));
+    expect(harness.controller.state.lastSuccessAt, DateTime(2026, 1, 1, 12));
+    expect(
+      harness.controller.state.nextEligibleAt,
+      DateTime(2026, 1, 1, 12, 5),
+    );
+    harness.dispose();
+  });
+
   test(
     'high confidence saved result is forwarded to quota UI callback',
     () async {
@@ -180,6 +211,10 @@ void main() {
 
     expect(events, containsAllInOrder(['reload', 'refresh']));
     expect(harness.repository.calls, 1);
+    expect(
+      harness.repository.lastReloadBeforeRefreshResult?.status,
+      ReloadBeforeRefreshStatus.completed,
+    );
     harness.dispose();
   });
 
@@ -272,6 +307,7 @@ Future<_Harness> _buildHarness({
   _FakeReloadService? reloadService,
   Duration reloadTimeout = const Duration(milliseconds: 80),
   List<String>? events,
+  String manualExtractionText = 'Used 1 of 10',
 }) async {
   final clock = FixedClock(DateTime(2026, 1, 1, 12));
   final settingsController = SettingsController(
@@ -291,7 +327,10 @@ Future<_Harness> _buildHarness({
     'https://chatgpt.com/codex/cloud/settings/analytics',
   );
 
-  final manualRefreshController = _manualRefreshController(clock);
+  final manualRefreshController = _manualRefreshController(
+    clock,
+    extractionText: manualExtractionText,
+  );
   final policy = const AutoRefreshPolicy(
     checkInterval: Duration(seconds: 60),
     failureCooldown: Duration(minutes: 5),
@@ -340,7 +379,10 @@ Future<_Harness> _buildHarness({
   );
 }
 
-ManualRefreshController _manualRefreshController(Clock clock) {
+ManualRefreshController _manualRefreshController(
+  Clock clock, {
+  required String extractionText,
+}) {
   final manualRefreshRepository = _FakeManualRefreshRepository();
   final saveUseCase = SaveManualRefreshSnapshot(
     quotaRepository: _FakeQuotaRepository(),
@@ -349,7 +391,7 @@ ManualRefreshController _manualRefreshController(Clock clock) {
   );
   return ManualRefreshController(
     refreshQuotaFromWebView: RefreshQuotaFromWebView(
-      extractionRepository: _FakeExtractionRepository(),
+      extractionRepository: _FakeExtractionRepository(text: extractionText),
       parserRepository: QuotaParserRepositoryImpl(parser: RegexQuotaParser()),
       mapper: const ParseResultToQuotaSnapshotMapper(),
       manualRefreshRepository: manualRefreshRepository,
@@ -446,6 +488,7 @@ class _FakeAutoRefreshRepository implements AutoRefreshRepository {
   final Completer<AutoRefreshResult>? completer;
   final List<String>? events;
   int calls = 0;
+  ReloadBeforeRefreshResult? lastReloadBeforeRefreshResult;
 
   @override
   bool get isRefreshInProgress => completer != null && !completer!.isCompleted;
@@ -454,9 +497,12 @@ class _FakeAutoRefreshRepository implements AutoRefreshRepository {
   Future<AutoRefreshResult> refreshCurrentPage(
     ManualRefreshPageState pageState, {
     bool reloadBeforeRefresh = false,
+    ReloadCancellationSignal? cancellationSignal,
+    ReloadBeforeRefreshResult? reloadBeforeRefreshResult,
   }) {
     events?.add('refresh');
     calls += 1;
+    lastReloadBeforeRefreshResult = reloadBeforeRefreshResult;
     return completer?.future ?? Future.value(result);
   }
 }
@@ -612,6 +658,10 @@ class _FakeQuotaRepository implements QuotaRepository {
 }
 
 class _FakeExtractionRepository implements PageTextExtractionRepository {
+  const _FakeExtractionRepository({required this.text});
+
+  final String text;
+
   @override
   void attachPageTextReader(CurrentPageTextReader reader) {}
 
@@ -624,9 +674,9 @@ class _FakeExtractionRepository implements PageTextExtractionRepository {
       id: 'manual-webview-1',
       sanitizedUrl: 'https://chatgpt.com/codex/cloud/settings/analytics',
       pageTitle: 'Analytics',
-      redactedTextPreview: 'Used 1 of 10',
-      originalLength: 12,
-      redactedLength: 12,
+      redactedTextPreview: text,
+      originalLength: text.length,
+      redactedLength: text.length,
       redactedEmailCount: 0,
       redactedTokenCount: 0,
       redactedApiKeyCount: 0,
