@@ -123,8 +123,8 @@ The data layer owns JSON encoding and `shared_preferences` access.
 
 The auth feature owns the WebView login container:
 
-- `WebAuthConfig`: central URL configuration for the login page and usage page
-  placeholder.
+- `WebAuthConfig`: central URL configuration for the login page and Codex usage
+  analytics page.
 - `WebAuthStatus`: conservative navigation-derived status values:
   `unknown`, `maybeLoggedIn`, `loggedOut`, `blocked`, and `error`.
 - `WebAuthRepository`: repository contract for loading URLs, navigating the

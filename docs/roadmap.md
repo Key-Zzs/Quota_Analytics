@@ -14,7 +14,8 @@ policy. Keep data local.
 
 Implemented a reviewed WebView login container. Users can manually open the
 official website, inspect sanitized navigation state, reload, go back/forward,
-open a usage placeholder, and clear this app's WebView data where supported.
+open the Codex usage analytics page, and clear this app's WebView data where
+supported.
 The app does not read cookies, tokens, HTML, page text, or quota values.
 
 ## Stage 4: Usage Page Text Extraction

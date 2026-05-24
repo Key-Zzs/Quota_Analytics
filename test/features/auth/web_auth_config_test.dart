@@ -9,9 +9,10 @@ void main() {
 
     expect(config.loginUri.scheme, 'https');
     expect(config.loginUri.host, 'chatgpt.com');
-    expect(config.loginUri.path, '/codex/cloud/settings/analytics');
-    expect(config.usageUriPlaceholder.scheme, 'https');
-    expect(config.usageUriPlaceholder.host, 'chatgpt.com');
+    expect(config.loginUri.path, '/auth/login');
+    expect(config.usageUri.scheme, 'https');
+    expect(config.usageUri.host, 'chatgpt.com');
+    expect(config.usageUri.path, '/codex/cloud/settings/analytics');
   });
 
   test('URL sanitizer removes query and fragment', () {

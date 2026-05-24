@@ -4,14 +4,14 @@ import 'web_auth_status.dart';
 class WebAuthConfig {
   const WebAuthConfig({
     this.loginUrl = WebConstants.loginUrl,
-    this.usageUrlPlaceholder = WebConstants.usageUrlPlaceholder,
+    this.usageUrl = WebConstants.usageUrl,
   });
 
   final String loginUrl;
-  final String usageUrlPlaceholder;
+  final String usageUrl;
 
   Uri get loginUri => Uri.parse(loginUrl);
-  Uri get usageUriPlaceholder => Uri.parse(usageUrlPlaceholder);
+  Uri get usageUri => Uri.parse(usageUrl);
 
   bool isSupportedNavigationUrl(String? rawUrl) {
     final uri = _parseAbsoluteUri(rawUrl);

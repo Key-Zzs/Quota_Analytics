@@ -69,6 +69,7 @@ void main() {
       findsWidgets,
     );
     expect(find.text('Open login page'), findsOneWidget);
+    expect(find.text('Open usage page'), findsOneWidget);
     expect(find.text('Reload'), findsOneWidget);
     expect(find.text('Clear WebView data'), findsOneWidget);
 

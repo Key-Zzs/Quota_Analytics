@@ -56,8 +56,8 @@ class WebViewAuthController extends ChangeNotifier {
     return _load(config.loginUri);
   }
 
-  Future<void> openUsagePagePlaceholder() {
-    return _load(config.usageUriPlaceholder);
+  Future<void> openUsagePage() {
+    return _load(config.usageUri);
   }
 
   Future<void> reload() {

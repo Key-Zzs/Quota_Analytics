@@ -39,10 +39,10 @@ class WebViewControls extends StatelessWidget {
                 ),
                 OutlinedButton.icon(
                   onPressed: isReady
-                      ? () => unawaited(controller.openUsagePagePlaceholder())
+                      ? () => unawaited(controller.openUsagePage())
                       : null,
                   icon: const Icon(Icons.open_in_browser),
-                  label: const Text('Open usage page placeholder'),
+                  label: const Text('Open usage page'),
                 ),
                 OutlinedButton.icon(
                   onPressed: canNavigate

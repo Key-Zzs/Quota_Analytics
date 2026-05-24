@@ -12,7 +12,7 @@ the credential boundary and does not extract quota data.
 - Added an Official Web Login page.
 - Added controls for:
   - Open login page.
-  - Open usage page placeholder.
+  - Open usage page.
   - Reload.
   - Back.
   - Forward.
@@ -61,12 +61,11 @@ The manifest does not enable cleartext traffic.
 
 Central definitions live in `lib/core/constants/web_constants.dart`:
 
-- `loginUrl`: `https://chatgpt.com/codex/cloud/settings/analytics`
-- `usageUrlPlaceholder`: `https://chatgpt.com/#settings`
+- `loginUrl`: `https://chatgpt.com/auth/login`
+- `usageUrl`: `https://chatgpt.com/codex/cloud/settings/analytics`
 
-The usage URL is a placeholder for an official account/settings surface. A
-future stage should confirm the exact usage route before extracting or parsing
-anything.
+The login URL is dedicated to account sign-in. The usage URL opens the Codex
+analytics surface after the user has logged in inside the app WebView.
 
 ## Auth Status Inference
 

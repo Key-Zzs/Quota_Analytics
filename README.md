@@ -27,7 +27,7 @@ Stage 6: manual WebView refresh flow is complete.
 - Persisted auto-refresh and refresh interval settings.
 - Official Web Login page using `webview_flutter`.
 - Users can manually open the official login page inside the app WebView.
-- Usage page placeholder entry exists for future confirmation.
+- Users can manually open the Codex usage analytics page after login.
 - Users can manually extract visible text from the current WebView page.
 - Extracted text is redacted before display and local storage.
 - Users can manually parse the current redacted visible text.
@@ -62,7 +62,7 @@ Stage 6: manual WebView refresh flow is complete.
 - Local history persistence, capped at 100 snapshots.
 - Persisted refresh interval settings UI.
 - WebView login container for manual official-site login.
-- WebView controls for login page, usage placeholder, reload, back, forward, and
+- WebView controls for login page, usage page, reload, back, forward, and
   app WebView data clearing.
 - Sanitized WebView URL display that hides query and fragment values.
 - Manual WebView visible text extraction with HTTPS and host allowlist checks.
