@@ -1,5 +1,46 @@
 # Security
 
+## Stage 6 Manual Refresh Boundary
+
+Stage 6 adds a real user-triggered manual refresh flow. The flow composes the
+existing WebView visible-text extraction, local redaction, local parser,
+confidence policy, and local snapshot persistence.
+
+The user must tap `Manual Refresh from Current Page`. The app does not refresh
+on app startup, page load, navigation events, timers, loops, foreground
+automation, background jobs, WorkManager, cron, launchd, or polling.
+
+Stage 6 still reads only:
+
+```js
+(() => document.body ? document.body.innerText : '')();
+```
+
+Stage 6 does not read or extract:
+
+- `document.cookie`
+- WebView cookies
+- `localStorage`
+- `sessionStorage`
+- `indexedDB`
+- Access tokens, refresh tokens, session tokens, authorization headers, or
+  network requests.
+- HTML, DOM structure, scripts, CSS, request headers, or network responses.
+
+Unredacted text is allowed only as a short-lived local variable inside the
+extraction call. It is immediately redacted, is not sent to UI, is not logged,
+is not persisted, and is not uploaded.
+
+Manual refresh can save only a parsed `QuotaSnapshot` candidate. The saved
+snapshot uses `source: webViewManualExtraction`, stores parser confidence, and
+stores parser evidence/matched-signal summaries rather than raw page text. Low
+confidence results are not saved by default.
+
+The Stage 6 local result key is `refresh.last_manual_result.v1`; it stores
+status, safety status, confidence, redaction summary, warnings/errors, duration,
+candidate metadata, and saved snapshot id. It does not store raw unredacted page
+text.
+
 ## Stage 5 Parser Boundary
 
 Stage 5 adds a local parser that reads only Stage 4 redacted visible text
@@ -153,6 +194,7 @@ The only keys the app owns are:
 - `quota.snapshot_history.v1`
 - `settings.app_settings.v1`
 - `extraction.last_page_text.v1`
+- `refresh.last_manual_result.v1`
 
 Clear local data removes only those keys. It does not remove project files,
 Flutter caches, emulator files, browser data, credentials, or any system
@@ -172,8 +214,9 @@ Stage 3 adds user-driven HTTPS WebView navigation for official-site login. It
 does not add a quota network API, remote backend, telemetry SDK, advertising
 SDK, crash reporting SDK, or automatic refresh job.
 
-Stage 5 parsing is local Dart code only. It does not add network upload,
-backend sync, telemetry, automatic refresh, or background refresh.
+Stage 5 parsing and Stage 6 manual refresh are local Dart code only. They do
+not add network upload, backend sync, telemetry, automatic refresh, or
+background refresh.
 
 Development commands such as `flutter doctor`, `flutter pub get`, and Android
 Gradle builds may perform normal toolchain checks or dependency resolution, but
@@ -188,6 +231,7 @@ listed above. The app does not register JavaScript channels and does not read
 cookies, storage, HTML, request headers, or network responses. Web content
 permission requests are denied by the app, and Android only adds the normal
 `INTERNET` permission required for HTTPS WebView navigation.
+Stage 6 reuses the same extraction boundary and adds local orchestration only.
 
 ## Debug Raw Text Risk
 
@@ -198,6 +242,8 @@ Stage 5 parser input is that bounded redacted preview only. Parsed snapshots
 store an evidence summary, not the full parser input. Any future raw-text parser
 input must go through another review before it can be persisted, exported, or
 uploaded.
+Stage 6 manual refresh results store redaction summaries and parser evidence
+only; they do not store raw page text.
 
 ## Device Testing
 

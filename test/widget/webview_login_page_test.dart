@@ -11,8 +11,20 @@ import 'package:quota_analytics/features/extraction/domain/entities/extraction_s
 import 'package:quota_analytics/features/extraction/domain/entities/extraction_source.dart';
 import 'package:quota_analytics/features/extraction/domain/repositories/page_text_extraction_repository.dart';
 import 'package:quota_analytics/features/extraction/presentation/controllers/page_text_extraction_controller.dart';
+import 'package:quota_analytics/features/parser/data/mappers/parse_result_to_quota_snapshot_mapper.dart';
+import 'package:quota_analytics/features/parser/data/parsers/regex_quota_parser.dart';
+import 'package:quota_analytics/features/parser/data/repositories/quota_parser_repository_impl.dart';
 import 'package:quota_analytics/features/quota/data/datasources/mock_quota_datasource.dart';
 import 'package:quota_analytics/features/quota/data/repositories/mock_quota_repository.dart';
+import 'package:quota_analytics/features/quota/domain/entities/quota_persistence_status.dart';
+import 'package:quota_analytics/features/quota/domain/entities/quota_snapshot.dart';
+import 'package:quota_analytics/features/quota/domain/repositories/quota_repository.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_result.dart';
+import 'package:quota_analytics/features/refresh/domain/repositories/manual_refresh_repository.dart';
+import 'package:quota_analytics/features/refresh/domain/usecases/refresh_quota_from_webview.dart';
+import 'package:quota_analytics/features/refresh/domain/usecases/save_manual_refresh_snapshot.dart';
+import 'package:quota_analytics/features/refresh/presentation/controllers/manual_refresh_controller.dart';
 import 'package:quota_analytics/features/settings/data/mock_settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,6 +42,7 @@ void main() {
           body: WebViewLoginPage(
             controller: controller,
             pageTextExtractionController: _buildExtractionController(),
+            manualRefreshController: _buildManualRefreshController(),
             webViewBuilder: (context, controller) {
               return const Center(child: Text('Fake WebView'));
             },
@@ -56,14 +69,22 @@ void main() {
       findsWidgets,
     );
     expect(find.text('Open login page'), findsOneWidget);
+    expect(find.text('Reload'), findsOneWidget);
+    expect(find.text('Clear WebView data'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Manual Refresh from Current Page'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Manual Refresh from Current Page'), findsOneWidget);
+
     await tester.scrollUntilVisible(
       find.text('Extract Page Text'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Extract Page Text'), findsOneWidget);
-    expect(find.text('Reload'), findsOneWidget);
-    expect(find.text('Clear WebView data'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -900));
     await tester.pumpAndSettle();
@@ -82,6 +103,7 @@ void main() {
               repository: _FakeWebAuthRepository(),
             ),
             pageTextExtractionController: _buildExtractionController(),
+            manualRefreshController: _buildManualRefreshController(),
             webViewBuilder: (context, controller) {
               return const SizedBox.shrink();
             },
@@ -163,6 +185,31 @@ PageTextExtractionController _buildExtractionController() {
   return PageTextExtractionController(repository: _FakeExtractionRepository());
 }
 
+ManualRefreshController _buildManualRefreshController() {
+  final clock = FixedClock(DateTime(2026, 1, 1, 12));
+  final manualRefreshRepository = _FakeManualRefreshRepository();
+  final quotaRepository = _FakeQuotaRepository();
+  final saveManualRefreshSnapshot = SaveManualRefreshSnapshot(
+    quotaRepository: quotaRepository,
+    manualRefreshRepository: manualRefreshRepository,
+    clock: clock,
+  );
+  return ManualRefreshController(
+    refreshQuotaFromWebView: RefreshQuotaFromWebView(
+      extractionRepository: _FakeExtractionRepository(),
+      parserRepository: QuotaParserRepositoryImpl(parser: RegexQuotaParser()),
+      mapper: const ParseResultToQuotaSnapshotMapper(),
+      manualRefreshRepository: manualRefreshRepository,
+      saveManualRefreshSnapshot: saveManualRefreshSnapshot,
+      clock: clock,
+    ),
+    saveManualRefreshSnapshot: saveManualRefreshSnapshot,
+    manualRefreshRepository: manualRefreshRepository,
+    policyProvider: ManualRefreshPolicy.defaults,
+    clock: clock,
+  );
+}
+
 class _FakeWebAuthRepository implements WebAuthRepository {
   @override
   Future<bool> canGoBack() async => false;
@@ -196,6 +243,59 @@ class _FakeWebAuthRepository implements WebAuthRepository {
 
   @override
   Future<void> reload() async {}
+}
+
+class _FakeManualRefreshRepository implements ManualRefreshRepository {
+  ManualRefreshResult? last;
+
+  @override
+  Future<void> clearLastResult() async {
+    last = null;
+  }
+
+  @override
+  Future<ManualRefreshResult?> getLastResult() async {
+    return last;
+  }
+
+  @override
+  Future<ManualRefreshResult> saveLastResult(ManualRefreshResult result) async {
+    last = result;
+    return result;
+  }
+}
+
+class _FakeQuotaRepository implements QuotaRepository {
+  QuotaSnapshot? saved;
+
+  @override
+  Future<void> clearLocalQuotaData() async {}
+
+  @override
+  Future<List<QuotaSnapshot>> getHistory() async {
+    return saved == null ? const [] : [saved!];
+  }
+
+  @override
+  Future<QuotaSnapshot> getLatestSnapshot() async {
+    return saved!;
+  }
+
+  @override
+  Future<QuotaPersistenceStatus> getPersistenceStatus() async {
+    return QuotaPersistenceStatus.mockOnly();
+  }
+
+  @override
+  Future<QuotaSnapshot> refreshSnapshot() async {
+    return saved!;
+  }
+
+  @override
+  Future<QuotaSnapshot> saveSnapshot(QuotaSnapshot snapshot) async {
+    saved = snapshot;
+    return snapshot;
+  }
 }
 
 class _FakeExtractionRepository implements PageTextExtractionRepository {

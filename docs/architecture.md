@@ -3,13 +3,14 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 5 keeps acquisition manual and local while adding a quota
-parser for Stage 4 redacted visible text.
+information. Stage 6 keeps acquisition manual and local while connecting the
+WebView visible-text extraction, redaction, parser, confidence policy, and local
+snapshot persistence into a real user-triggered refresh flow.
 
-Stage 5 does not implement real quota refresh, cookies, tokens, storage reads,
-HTML extraction, backend calls, automatic refresh, or background refresh. The
-WebView login container, text extraction flow, parser, and quota persistence
-remain intentionally separate.
+Stage 6 does not implement cookies, tokens, storage reads, HTML extraction,
+backend calls, automatic refresh, or background refresh. The WebView login
+container, text extraction flow, parser, manual refresh orchestration, and quota
+persistence remain intentionally separate.
 
 ## Layers
 
@@ -30,6 +31,8 @@ The app uses a feature-first Clean Architecture layout:
   redacted preview storage, controller state, and widgets.
 - `features/parser`: Stage 5 local parser domain model, regex parser,
   confidence rules, result-to-snapshot mapper, controller state, and widgets.
+- `features/refresh`: Stage 6 manual refresh orchestration, typed status/result
+  model, save policy, persisted last result, use cases, controller, and widgets.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -73,10 +76,10 @@ repository contract. This keeps future data sources out of widget code.
 
 `PersistentQuotaRepository` first attempts to load the latest snapshot from
 `LocalQuotaDataSource`. If no valid local snapshot exists, it falls back to
-`MockQuotaDataSource`. Manual refresh still comes from the mock source, then the
-result is written to latest snapshot storage and snapshot history.
-Stage 5 uses `saveSnapshot` only after the user confirms saving a parsed
-snapshot preview.
+`MockQuotaDataSource`. The legacy app-bar mock refresh still writes mock data to
+latest snapshot storage and history. Stage 6 manual refresh uses `saveSnapshot`
+after user confirmation, or after high-confidence auto-save if the user enables
+that conservative setting.
 
 ## Persistence Layer
 
@@ -90,6 +93,8 @@ The persistence layer is intentionally small:
 - `LocalSettingsDataSource`: serializes/deserializes app settings.
 - `LocalExtractedTextDataSource`: serializes/deserializes the latest redacted
   extracted text preview.
+- `LocalManualRefreshDataSource`: serializes/deserializes the latest manual
+  refresh result without raw unredacted page text.
 
 Current keys:
 
@@ -97,6 +102,7 @@ Current keys:
 - `quota.snapshot_history.v1`
 - `settings.app_settings.v1`
 - `extraction.last_page_text.v1`
+- `refresh.last_manual_result.v1`
 
 Snapshot history is newest-first and capped at 100 records.
 
@@ -191,6 +197,45 @@ text:
 The parser does not depend on WebView and has no file, storage, cookie, token,
 or network access. Its only app input is Stage 4 redacted visible text.
 
+## Refresh Feature
+
+The refresh feature owns Stage 6 manual orchestration:
+
+- `ManualRefreshStatus`: typed state machine from `checkingPage` through
+  extraction, redaction, parsing, confirmation, saving, saved, and failure
+  states.
+- `ManualRefreshResult`: status, extraction safety status, parser confidence,
+  warnings/errors, candidate snapshot, redaction summary, duration, and saved
+  snapshot id. It does not contain raw unredacted text.
+- `ManualRefreshPolicy`: conservative save policy. High confidence can
+  auto-save only if enabled; medium requires confirmation; low is blocked by
+  default.
+- `RefreshQuotaFromWebView`: checks current WebView page state and URL safety,
+  calls the extraction repository, parses redacted text, maps high/medium
+  results to a candidate snapshot, applies policy, and optionally auto-saves
+  high confidence results.
+- `SaveManualRefreshSnapshot`: validates policy and saves the candidate through
+  `QuotaRepository.saveSnapshot`, which updates latest snapshot and history.
+- `ManualRefreshRepository`: persists only the last manual refresh result for
+  Debug/local state.
+- `ManualRefreshController`: presentation state for the WebView page and Debug
+  page.
+- `ManualRefreshButton`, `ManualRefreshStatusCard`,
+  `ManualRefreshResultCard`, and `SaveSnapshotConfirmation`: UI widgets for the
+  user-triggered flow.
+
+The refresh feature composes extraction, parser, and persistence. It does not
+own WebView JavaScript, parser regexes, or direct `shared_preferences` access.
+
+## Why Manual Refresh And Auto Refresh Are Separate
+
+Manual refresh is a user-intent boundary: the user opens a page, taps a clear
+button, reviews the result, and confirms save unless policy allows
+high-confidence auto-save. Automatic refresh would introduce scheduling,
+navigation timing, retry, and user-awareness risks. Keeping it as a future
+feature prevents Stage 6 from silently polling pages or collecting text outside
+an explicit tap.
+
 ## Why Extraction And Parser Are Separate
 
 Extraction is a controlled acquisition boundary; parsing is a data
@@ -215,13 +260,14 @@ contracts expose typed entities and futures. This keeps the core quota/settings
 model reusable for future local JSON files, SQLite/Drift, an official API
 adapter, a reviewed WebView source, or desktop agents without changing widgets.
 
-## Why Real Refresh Is Still Disabled
+## Why Automatic Refresh Is Still Disabled
 
-Mock/manual-parser scope keeps the early milestones safe and testable:
+Manual-only scope keeps the early milestones safe and testable:
 
 - User-driven WebView login only, with no app access to credentials.
 - User-triggered visible text extraction only, with no cookie or token handling.
 - Local parser only for redacted visible text.
+- User-reviewed save policy for parsed snapshots.
 - No network parsing or uploads.
 - No hidden background refresh.
 - Fast local unit and widget tests.

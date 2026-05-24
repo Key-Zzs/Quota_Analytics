@@ -31,17 +31,19 @@ produces `QuotaParseResult`, confidence, warnings/errors, parsed windows,
 optional credits, and high/medium `QuotaSnapshot` previews that can be saved
 only after explicit user confirmation.
 
-## Stage 6: Manual Refresh
+## Stage 6: Real Manual Refresh Flow
 
-Wire manual refresh to the real data source while keeping clear loading,
-success, empty, and error states.
+Implemented a real user-triggered manual refresh flow from the current WebView
+page. The app checks page safety, extracts only visible text, redacts locally,
+parses locally, creates high/medium confidence snapshot candidates, and saves
+only after policy allows it. No automatic or background refresh is included.
 
 ## Stage 7: Foreground Auto Refresh
 
 Add foreground-only refresh while the app is open. Keep it user-controlled and
 visible.
 
-## Stage 8: Background Refresh / Notification
+## Stage 8: Android Background Refresh And Notifications
 
 Only after explicit review, add background refresh and notifications with
 minimal scheduling, clear opt-in, and no hidden login behavior.
@@ -67,9 +69,9 @@ appropriate for this use case.
 - [x] Stage 3: WebView login container
 - [x] Stage 4: Usage page text extraction
 - [x] Stage 5: Quota parser with confidence levels
-- [ ] Stage 6: Real manual refresh flow
+- [x] Stage 6: Real manual refresh flow
 - [ ] Stage 7: Foreground auto refresh
-- [ ] Stage 8: Background refresh / notification
+- [ ] Stage 8: Android background refresh and notifications
 - [ ] Stage 9: iOS adaptation
 - [ ] Stage 10: Desktop / wearable clients
 - [ ] Stage 11: Optional official API adapter

@@ -36,6 +36,7 @@ class LocalSettingsRepository implements SettingsRepository {
       return AppSettings(
         autoRefreshEnabled: false,
         refreshInterval: RefreshInterval.off,
+        manualRefreshPolicy: settings.manualRefreshPolicy,
         updatedAt: updatedAt,
       );
     }
@@ -45,6 +46,7 @@ class LocalSettingsRepository implements SettingsRepository {
       refreshInterval: settings.refreshInterval.isOff
           ? RefreshInterval.fifteenMinutes
           : settings.refreshInterval,
+      manualRefreshPolicy: settings.manualRefreshPolicy,
       updatedAt: updatedAt,
     );
   }

@@ -13,9 +13,14 @@ import '../widgets/quota_empty_view.dart';
 import '../widgets/quota_error_view.dart';
 
 class QuotaHomePage extends StatelessWidget {
-  const QuotaHomePage({super.key, required this.controller});
+  const QuotaHomePage({
+    super.key,
+    required this.controller,
+    this.onGoToWebRefresh,
+  });
 
   final QuotaController controller;
+  final VoidCallback? onGoToWebRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +46,11 @@ class QuotaHomePage extends StatelessWidget {
           );
         }
 
-        return _QuotaDashboard(snapshot: snapshot, controller: controller);
+        return _QuotaDashboard(
+          snapshot: snapshot,
+          controller: controller,
+          onGoToWebRefresh: onGoToWebRefresh,
+        );
       },
     );
   }
@@ -66,10 +75,15 @@ class _InitialLoadingView extends StatelessWidget {
 }
 
 class _QuotaDashboard extends StatelessWidget {
-  const _QuotaDashboard({required this.snapshot, required this.controller});
+  const _QuotaDashboard({
+    required this.snapshot,
+    required this.controller,
+    required this.onGoToWebRefresh,
+  });
 
   final QuotaSnapshot snapshot;
   final QuotaController controller;
+  final VoidCallback? onGoToWebRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +93,13 @@ class _QuotaDashboard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         _ModeBanner(isLoading: controller.isLoading),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          key: const ValueKey('go-to-web-refresh-button'),
+          onPressed: onGoToWebRefresh,
+          icon: const Icon(Icons.language),
+          label: const Text('Go to Web Refresh'),
+        ),
         const SizedBox(height: 12),
         Text(
           AppConstants.appSubtitle,

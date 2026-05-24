@@ -27,6 +27,11 @@ import 'features/quota/data/repositories/persistent_quota_repository.dart';
 import 'features/quota/domain/repositories/quota_repository.dart';
 import 'features/quota/presentation/controllers/quota_controller.dart';
 import 'features/quota/presentation/pages/quota_home_page.dart';
+import 'features/refresh/data/datasources/local_manual_refresh_datasource.dart';
+import 'features/refresh/data/repositories/manual_refresh_repository_impl.dart';
+import 'features/refresh/domain/usecases/refresh_quota_from_webview.dart';
+import 'features/refresh/domain/usecases/save_manual_refresh_snapshot.dart';
+import 'features/refresh/presentation/controllers/manual_refresh_controller.dart';
 import 'features/settings/data/datasources/local_settings_datasource.dart';
 import 'features/settings/data/repositories/local_settings_repository.dart';
 import 'features/settings/domain/repositories/settings_repository.dart';
@@ -142,7 +147,14 @@ class _QuotaShellState extends State<QuotaShell> {
     final quotaController = controllers.quotaController;
     final settingsController = controllers.settingsController;
     final pages = <Widget>[
-      QuotaHomePage(controller: quotaController),
+      QuotaHomePage(
+        controller: quotaController,
+        onGoToWebRefresh: () {
+          setState(() {
+            _selectedIndex = 2;
+          });
+        },
+      ),
       SettingsPage(
         controller: settingsController,
         onClearLocalData: _clearAllLocalData,
@@ -154,6 +166,7 @@ class _QuotaShellState extends State<QuotaShell> {
         webAuthController: controllers.webAuthController,
         pageTextExtractionController: controllers.pageTextExtractionController,
         quotaParserController: controllers.quotaParserController,
+        manualRefreshController: controllers.manualRefreshController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -217,6 +230,7 @@ class _QuotaShellState extends State<QuotaShell> {
         controller: controllers.webAuthController,
         pageTextExtractionController: controllers.pageTextExtractionController,
         quotaParserController: controllers.quotaParserController,
+        manualRefreshController: controllers.manualRefreshController,
         onParsedSnapshotSaved: controllers.quotaController.applySavedSnapshot,
       );
     }
@@ -253,10 +267,24 @@ class _QuotaShellState extends State<QuotaShell> {
     final quotaParserRepository =
         widget.quotaParserRepository ??
         QuotaParserRepositoryImpl(parser: RegexQuotaParser());
+    final manualRefreshRepository = ManualRefreshRepositoryImpl(
+      localDataSource: LocalManualRefreshDataSource(
+        storage: storage!,
+        clock: effectiveClock,
+      ),
+    );
+    final settingsController = SettingsController(
+      repository: settingsRepository,
+    );
+    final saveManualRefreshSnapshot = SaveManualRefreshSnapshot(
+      quotaRepository: quotaRepository,
+      manualRefreshRepository: manualRefreshRepository,
+      clock: effectiveClock,
+    );
 
     final controllers = _AppControllers(
       quotaController: QuotaController(repository: quotaRepository),
-      settingsController: SettingsController(repository: settingsRepository),
+      settingsController: settingsController,
       webAuthController: WebViewAuthController(clock: effectiveClock),
       pageTextExtractionController: PageTextExtractionController(
         repository: pageTextExtractionRepository,
@@ -266,6 +294,20 @@ class _QuotaShellState extends State<QuotaShell> {
         mapper: const ParseResultToQuotaSnapshotMapper(),
         saveParsedQuotaSnapshot: SaveParsedQuotaSnapshot(quotaRepository),
       ),
+      manualRefreshController: ManualRefreshController(
+        refreshQuotaFromWebView: RefreshQuotaFromWebView(
+          extractionRepository: pageTextExtractionRepository,
+          parserRepository: quotaParserRepository,
+          mapper: const ParseResultToQuotaSnapshotMapper(),
+          manualRefreshRepository: manualRefreshRepository,
+          saveManualRefreshSnapshot: saveManualRefreshSnapshot,
+          clock: effectiveClock,
+        ),
+        saveManualRefreshSnapshot: saveManualRefreshSnapshot,
+        manualRefreshRepository: manualRefreshRepository,
+        policyProvider: () => settingsController.manualRefreshPolicy,
+        clock: effectiveClock,
+      ),
     );
     _controllers = controllers;
 
@@ -273,6 +315,7 @@ class _QuotaShellState extends State<QuotaShell> {
       controllers.quotaController.loadLatestSnapshot(),
       controllers.settingsController.load(),
       controllers.pageTextExtractionController.loadLastExtractedPageText(),
+      controllers.manualRefreshController.loadLastResult(),
     ]);
 
     return controllers;
@@ -294,6 +337,7 @@ class _QuotaShellState extends State<QuotaShell> {
     await controllers.settingsController.clear();
     await controllers.pageTextExtractionController.clearExtractedPageText();
     controllers.quotaParserController.clearParseResult();
+    await controllers.manualRefreshController.clearLastResult();
   }
 
   String _titleForIndex(int index) {
@@ -313,6 +357,7 @@ class _AppControllers {
     required this.webAuthController,
     required this.pageTextExtractionController,
     required this.quotaParserController,
+    required this.manualRefreshController,
   });
 
   final QuotaController quotaController;
@@ -320,6 +365,7 @@ class _AppControllers {
   final WebViewAuthController webAuthController;
   final PageTextExtractionController pageTextExtractionController;
   final QuotaParserController quotaParserController;
+  final ManualRefreshController manualRefreshController;
 
   void dispose() {
     quotaController.dispose();
@@ -327,5 +373,6 @@ class _AppControllers {
     webAuthController.dispose();
     pageTextExtractionController.dispose();
     quotaParserController.dispose();
+    manualRefreshController.dispose();
   }
 }

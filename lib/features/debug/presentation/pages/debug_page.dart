@@ -13,6 +13,7 @@ import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../../quota/domain/entities/quota_source.dart';
 import '../../../quota/presentation/controllers/quota_controller.dart';
+import '../../../refresh/presentation/controllers/manual_refresh_controller.dart';
 import '../../../settings/presentation/controllers/settings_controller.dart';
 
 class DebugPage extends StatelessWidget {
@@ -23,6 +24,7 @@ class DebugPage extends StatelessWidget {
     required this.webAuthController,
     required this.pageTextExtractionController,
     required this.quotaParserController,
+    required this.manualRefreshController,
     required this.onClearLocalData,
   });
 
@@ -31,6 +33,7 @@ class DebugPage extends StatelessWidget {
   final WebViewAuthController webAuthController;
   final PageTextExtractionController pageTextExtractionController;
   final QuotaParserController quotaParserController;
+  final ManualRefreshController manualRefreshController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -42,6 +45,7 @@ class DebugPage extends StatelessWidget {
         webAuthController,
         pageTextExtractionController,
         quotaParserController,
+        manualRefreshController,
       ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
@@ -292,6 +296,53 @@ class DebugPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _DebugCard(
+              title: 'Stage 6 Manual Refresh',
+              children: [
+                _DebugRow(
+                  label: 'Last manual refresh status',
+                  value: manualRefreshController.lastResult.status.label,
+                ),
+                _DebugRow(
+                  label: 'Last manual refresh duration',
+                  value: formatDuration(
+                    manualRefreshController.lastResult.duration,
+                  ),
+                ),
+                _DebugRow(
+                  label: 'Last extraction safety status',
+                  value: manualRefreshController.lastResult.safetyStatus.label,
+                ),
+                _DebugRow(
+                  label: 'Last parser confidence',
+                  value:
+                      manualRefreshController.lastResult.parserConfidence.label,
+                ),
+                _DebugRow(
+                  label: 'Last redaction summary',
+                  value: _manualRedactionSummary(manualRefreshController),
+                ),
+                _DebugRow(
+                  label: 'Last warnings',
+                  value: manualRefreshController.lastResult.warnings.isEmpty
+                      ? 'none'
+                      : manualRefreshController.lastResult.warnings.join(' | '),
+                ),
+                _DebugRow(
+                  label: 'Last errors',
+                  value: manualRefreshController.lastResult.errors.isEmpty
+                      ? 'none'
+                      : manualRefreshController.lastResult.errors.join(' | '),
+                ),
+                _DebugRow(
+                  label: 'Last saved snapshot id',
+                  value: manualRefreshController.lastSavedSnapshotId ?? 'none',
+                ),
+                const _DebugRow(label: 'Automatic refresh', value: 'disabled'),
+                const _DebugRow(label: 'Background refresh', value: 'disabled'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DebugCard(
               title: 'Recent snapshots',
               children: [
                 if (controller.history.isEmpty)
@@ -324,6 +375,7 @@ class DebugPage extends StatelessWidget {
                 Text('No localStorage or sessionStorage reading'),
                 Text('Manual visible text extraction only'),
                 Text('Local quota parsing from redacted text only'),
+                Text('Manual refresh requires a user tap'),
                 Text('No background refresh'),
                 SizedBox(height: 8),
                 Text(AppConstants.stageNotice),
@@ -347,6 +399,14 @@ class DebugPage extends StatelessWidget {
     return 'email ${extraction.redactedEmailCount}, token ${extraction.redactedTokenCount}, apiKey ${extraction.redactedApiKeyCount}, secret ${extraction.redactedSecretCount}';
   }
 
+  static String _manualRedactionSummary(ManualRefreshController controller) {
+    final summary = controller.lastResult.redactionSummary;
+    if (summary == null) {
+      return 'none';
+    }
+    return 'length ${summary.originalLength}->${summary.redactedLength}, email ${summary.redactedEmailCount}, token ${summary.redactedTokenCount}, apiKey ${summary.redactedApiKeyCount}, secret ${summary.redactedSecretCount}, truncated ${summary.truncated}';
+  }
+
   Future<void> _confirmClear(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -354,7 +414,7 @@ class DebugPage extends StatelessWidget {
         return AlertDialog(
           title: const Text('Clear local data?'),
           content: const Text(
-            'This removes only this app\'s saved mock quota snapshots, settings, and redacted extracted text preview.',
+            'This removes only this app\'s saved mock quota snapshots, settings, redacted extracted text preview, parser result, and last manual refresh result.',
           ),
           actions: [
             TextButton(

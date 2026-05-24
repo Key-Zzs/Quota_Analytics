@@ -6,6 +6,7 @@ import 'package:quota_analytics/features/settings/data/datasources/local_setting
 import 'package:quota_analytics/features/settings/data/repositories/local_settings_repository.dart';
 import 'package:quota_analytics/features/settings/domain/entities/app_settings.dart';
 import 'package:quota_analytics/features/settings/domain/entities/refresh_interval.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -29,6 +30,7 @@ void main() {
       AppSettings(
         autoRefreshEnabled: true,
         refreshInterval: RefreshInterval.thirtyMinutes,
+        manualRefreshPolicy: ManualRefreshPolicy.defaults(),
         updatedAt: DateTime.utc(2026, 1, 1),
       ),
     );
@@ -47,6 +49,7 @@ void main() {
       AppSettings(
         autoRefreshEnabled: true,
         refreshInterval: RefreshInterval.fiveMinutes,
+        manualRefreshPolicy: ManualRefreshPolicy.defaults(),
         updatedAt: DateTime.utc(2026, 1, 1),
       ),
     );

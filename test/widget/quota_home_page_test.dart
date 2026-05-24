@@ -15,6 +15,7 @@ import 'package:quota_analytics/features/settings/data/mock_settings_repository.
 import 'package:quota_analytics/features/settings/data/models/app_settings_model.dart';
 import 'package:quota_analytics/features/settings/domain/entities/app_settings.dart';
 import 'package:quota_analytics/features/settings/domain/entities/refresh_interval.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -23,12 +24,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.text('Weekly window'), findsOneWidget);
-    expect(find.textContaining('Stage 5: local parser'), findsOneWidget);
+    expect(find.textContaining('Stage 6: user-triggered'), findsOneWidget);
+    expect(find.text('Go to Web Refresh'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
 
+    expect(find.text('Weekly window'), findsOneWidget);
     expect(find.text('Mock GPT Account'), findsOneWidget);
   });
 
@@ -88,10 +90,20 @@ void main() {
     await tester.tap(find.text('30 minutes').last);
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Persisted settings'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
     expect(find.text('Auto refresh: On'), findsOneWidget);
     expect(find.text('Interval: 30 minutes'), findsOneWidget);
+    expect(
+      find.text('Manual refresh auto-save high confidence: Off'),
+      findsOneWidget,
+    );
 
-    await tester.tap(find.text('Save settings'));
+    await tester.tap(find.text('Save settings').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Settings saved'), findsOneWidget);
@@ -134,6 +146,11 @@ void main() {
       AppSettings(
         autoRefreshEnabled: true,
         refreshInterval: RefreshInterval.sixtyMinutes,
+        manualRefreshPolicy: const ManualRefreshPolicy(
+          autoSaveHighConfidence: true,
+          requireConfirmationForMediumConfidence: true,
+          allowLowConfidenceSave: false,
+        ),
         updatedAt: DateTime(2026, 1, 1, 13),
       ),
     );

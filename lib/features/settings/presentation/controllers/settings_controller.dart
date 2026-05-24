@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../refresh/domain/entities/manual_refresh_policy.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/refresh_interval.dart';
 import '../../domain/repositories/settings_repository.dart';
@@ -31,6 +32,10 @@ class SettingsController extends ChangeNotifier {
   bool get autoRefreshEnabled => _settings?.autoRefreshEnabled ?? false;
   RefreshInterval get refreshInterval =>
       _settings?.refreshInterval ?? RefreshInterval.off;
+  ManualRefreshPolicy get manualRefreshPolicy =>
+      _settings?.manualRefreshPolicy ?? ManualRefreshPolicy.defaults();
+  bool get autoSaveHighConfidenceManualRefresh =>
+      manualRefreshPolicy.autoSaveHighConfidence;
   String? get message => _message;
   String? get errorMessage => _errorMessage;
   DateTime? get lastLoadTime => _lastLoadTime;
@@ -71,6 +76,17 @@ class SettingsController extends ChangeNotifier {
     _settings = current.copyWith(
       autoRefreshEnabled: !interval.isOff,
       refreshInterval: interval,
+    );
+    _message = null;
+    notifyListeners();
+  }
+
+  void setManualRefreshAutoSaveHighConfidence(bool value) {
+    final current = _settings ?? AppSettings.defaults(DateTime.now());
+    _settings = current.copyWith(
+      manualRefreshPolicy: current.manualRefreshPolicy.copyWith(
+        autoSaveHighConfidence: value,
+      ),
     );
     _message = null;
     notifyListeners();

@@ -8,21 +8,20 @@ usage limits, refresh windows, remaining quota, and quota status.
 This is an unofficial independent project. It is not affiliated with, endorsed
 by, or maintained by OpenAI, ChatGPT, or Codex.
 
-Stage 5 adds a local parser for the redacted visible text produced by Stage 4.
-Extraction happens only after the user taps the button, reads only
-`document.body.innerText`, redacts the result locally, and stores only a bounded
-redacted preview for debugging. Parsing happens locally, shows confidence, and
-requires explicit user confirmation before a parsed snapshot is saved. The app
-still does not read cookies, tokens, passwords, browser storage contents, local
-browser profiles, credentials, or an official quota API.
+Stage 6 connects the user-triggered WebView visible-text extraction, local
+redaction, local parser, confidence policy, and local snapshot persistence into
+a real manual refresh flow. Extraction still reads only
+`document.body.innerText`; parsing and save policy remain local. The app still
+does not read cookies, tokens, passwords, browser storage contents, local
+browser profiles, credentials, HTML, or an official quota API.
 
 ## Current Status
 
-Stage 5: local quota parser with confidence levels is complete.
+Stage 6: manual WebView refresh flow is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
-- Mock manual refresh.
+- Legacy mock refresh remains available from the app bar.
 - Last mock snapshot restore on startup.
 - Bounded mock snapshot history.
 - Persisted auto-refresh and refresh interval settings.
@@ -32,14 +31,16 @@ Stage 5: local quota parser with confidence levels is complete.
 - Users can manually extract visible text from the current WebView page.
 - Extracted text is redacted before display and local storage.
 - Users can manually parse the current redacted visible text.
+- Users can manually refresh from the current WebView page in one flow.
 - Parser results include confidence, warnings, errors, matched signals, window
   fields, credits, and evidence labels.
 - Parser results are local and may be inaccurate.
 - Parsed snapshots require manual save and are marked with source and parser
   confidence.
+- High-confidence manual refresh can auto-save only if the user enables the
+  conservative setting; it is off by default.
 - WebView status shows sanitized URL, title, loading progress, navigation time,
   last error, and conservative auth status.
-- The app still does not read real quota data.
 - The app still does not read cookie/token values.
 - The app still does not read localStorage or sessionStorage.
 - The app still does not extract HTML.
@@ -47,7 +48,7 @@ Stage 5: local quota parser with confidence levels is complete.
 - The app still does not run automatic or background refresh.
 - Settings page with explicit save and clear-local-data.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
-  and Stage 5 parser safety flags.
+  Stage 5 parser, and Stage 6 manual refresh safety flags.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -71,6 +72,8 @@ Stage 5: local quota parser with confidence levels is complete.
 - Local quota parser for redacted visible text.
 - Parse result UI with confidence, warnings, errors, windows, credits, and
   evidence labels.
+- Manual refresh flow from the current WebView page.
+- Manual refresh policy for high/medium/low confidence saves.
 - Optional user-confirmed save for high/medium parsed snapshots.
 - Debug information page with storage diagnostics.
 - Clear local data with confirmation.
@@ -111,6 +114,13 @@ The parser feature owns the Stage 5 local parser through `QuotaParseResult`,
 can map high/medium parse results to `QuotaSnapshot` previews with
 `source: webViewManualExtraction`.
 
+The refresh feature owns the Stage 6 manual orchestration through
+`ManualRefreshStatus`, `ManualRefreshResult`, `ManualRefreshPolicy`,
+`RefreshQuotaFromWebView`, `SaveManualRefreshSnapshot`,
+`ManualRefreshController`, and the manual refresh widgets. It composes
+extraction, parser, and persistence without adding cookie/token/storage/HTML
+access or background execution.
+
 Future source placeholders include:
 
 - `WebViewQuotaDataSource` for a future reviewed usage extraction stage.
@@ -124,8 +134,9 @@ More detail is available in [docs/architecture.md](docs/architecture.md),
 [docs/stage1_report.md](docs/stage1_report.md). The Stage 2 implementation is
 summarized in [docs/stage2_report.md](docs/stage2_report.md), Stage 3 is
 summarized in [docs/stage3_report.md](docs/stage3_report.md), Stage 4 is
-summarized in [docs/stage4_report.md](docs/stage4_report.md), and Stage 5 is
-summarized in [docs/stage5_report.md](docs/stage5_report.md).
+summarized in [docs/stage4_report.md](docs/stage4_report.md), Stage 5 is
+summarized in [docs/stage5_report.md](docs/stage5_report.md), and Stage 6 is
+summarized in [docs/stage6_report.md](docs/stage6_report.md).
 
 ## Project Structure
 
@@ -144,7 +155,8 @@ summarized in [docs/stage5_report.md](docs/stage5_report.md).
 │   ├── stage2_report.md
 │   ├── stage3_report.md
 │   ├── stage4_report.md
-│   └── stage5_report.md
+│   ├── stage5_report.md
+│   └── stage6_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -154,6 +166,7 @@ summarized in [docs/stage5_report.md](docs/stage5_report.md).
 │   │   ├── extraction/
 │   │   ├── quota/
 │   │   ├── parser/
+│   │   ├── refresh/
 │   │   └── settings/
 │   ├── main.dart
 │   └── platform_placeholders/
@@ -197,10 +210,11 @@ flutter run
 
 ## Development Notes
 
-- Stage 5 WebView network access is limited to user-driven official-site
+- Stage 6 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
-- Stage 5 persists mock quota data/settings, the last redacted extracted text
-  preview, and user-confirmed parsed snapshot previews.
+- Stage 6 persists mock quota data/settings, the last redacted extracted text
+  preview, the last manual refresh result, and policy-approved parsed
+  snapshots.
 - Do not add automatic refresh, background refresh, storage reads, or network
   upload without a new security review.
 - Do not store credentials.
@@ -212,7 +226,7 @@ flutter run
 - [x] Stage 3: WebView login container
 - [x] Stage 4: Usage page text extraction
 - [x] Stage 5: Quota parser with confidence levels
-- [ ] Stage 6: Real manual refresh flow
+- [x] Stage 6: Real manual refresh flow
 - [ ] Stage 7: Foreground auto refresh
 - [ ] Stage 8: Android background refresh and notifications
 - [ ] Stage 9: iOS adaptation
@@ -231,11 +245,12 @@ flutter run
 - Parser works on redacted visible text only.
 - Parser results are local and may be inaccurate.
 - Low-confidence parser results are not saveable as snapshots.
+- Manual refresh requires a user tap.
 - No automatic or background refresh.
 - No analytics SDK by default.
 - Debug extracted text should be treated as sensitive even after redaction.
 
-See [docs/security.md](docs/security.md) for the Stage 5 security boundary.
+See [docs/security.md](docs/security.md) for the Stage 6 security boundary.
 
 ## License
 

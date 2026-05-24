@@ -66,6 +66,46 @@ class SettingsPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Card(
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text(
+                      'Auto-save high confidence manual refresh',
+                    ),
+                    subtitle: const Text(
+                      'Off by default. Medium confidence still requires confirmation.',
+                    ),
+                    value: controller.autoSaveHighConfidenceManualRefresh,
+                    onChanged: controller.isSaving
+                        ? null
+                        : controller.setManualRefreshAutoSaveHighConfidence,
+                  ),
+                  const ListTile(
+                    title: Text('Medium confidence manual refresh'),
+                    subtitle: Text('Allowed only after user confirmation.'),
+                  ),
+                  const ListTile(
+                    title: Text('Low confidence manual refresh'),
+                    subtitle: Text('Saving disabled by default.'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: controller.isSaving
+                            ? null
+                            : () => unawaited(controller.save()),
+                        icon: const Icon(Icons.save_outlined),
+                        label: const Text('Save settings'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -80,6 +120,13 @@ class SettingsPage extends StatelessWidget {
                       'Auto refresh: ${controller.autoRefreshEnabled ? 'On' : 'Off'}',
                     ),
                     Text('Interval: ${controller.refreshInterval.label}'),
+                    Text(
+                      'Manual refresh auto-save high confidence: ${controller.autoSaveHighConfidenceManualRefresh ? 'On' : 'Off'}',
+                    ),
+                    const Text(
+                      'Manual refresh medium confidence: confirmation required',
+                    ),
+                    const Text('Manual refresh low confidence: save disabled'),
                     Text(
                       'Settings updated: ${formatDateTime(controller.settings?.updatedAt)}',
                     ),
@@ -119,7 +166,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Clears saved mock snapshots, snapshot history, persisted settings, and redacted extracted text preview.',
+                      'Clears saved mock snapshots, snapshot history, persisted settings, redacted extracted text preview, and last manual refresh result.',
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
@@ -146,7 +193,7 @@ class SettingsPage extends StatelessWidget {
         return AlertDialog(
           title: const Text('Clear local data?'),
           content: const Text(
-            'This removes only this app\'s saved mock quota snapshots, history, settings, and redacted extracted text preview.',
+            'This removes only this app\'s saved mock quota snapshots, history, settings, redacted extracted text preview, and last manual refresh result.',
           ),
           actions: [
             TextButton(

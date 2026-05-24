@@ -8,6 +8,11 @@ import '../../../extraction/presentation/controllers/page_text_extraction_contro
 import '../../../extraction/presentation/widgets/extraction_status_card.dart';
 import '../../../parser/presentation/controllers/quota_parser_controller.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
+import '../../../refresh/domain/entities/manual_refresh_page_state.dart';
+import '../../../refresh/presentation/controllers/manual_refresh_controller.dart';
+import '../../../refresh/presentation/widgets/manual_refresh_button.dart';
+import '../../../refresh/presentation/widgets/manual_refresh_result_card.dart';
+import '../../../refresh/presentation/widgets/manual_refresh_status_card.dart';
 import '../../data/datasources/webview_auth_datasource.dart';
 import '../../data/repositories/webview_auth_repository.dart';
 import '../controllers/webview_auth_controller.dart';
@@ -24,6 +29,7 @@ class WebViewLoginPage extends StatefulWidget {
     this.controller,
     this.pageTextExtractionController,
     this.quotaParserController,
+    this.manualRefreshController,
     this.onParsedSnapshotSaved,
     this.webViewBuilder,
   });
@@ -31,6 +37,7 @@ class WebViewLoginPage extends StatefulWidget {
   final WebViewAuthController? controller;
   final PageTextExtractionController? pageTextExtractionController;
   final QuotaParserController? quotaParserController;
+  final ManualRefreshController? manualRefreshController;
   final ValueChanged<QuotaSnapshot>? onParsedSnapshotSaved;
   final AuthWebViewBuilder? webViewBuilder;
 
@@ -87,6 +94,7 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
         _controller,
         widget.pageTextExtractionController,
         widget.quotaParserController,
+        widget.manualRefreshController,
       ]),
       builder: (context, _) {
         return LayoutBuilder(
@@ -112,6 +120,14 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
                 WebViewControls(controller: _controller),
                 const SizedBox(height: 12),
                 WebViewStatusBar(controller: _controller),
+                if (widget.manualRefreshController != null) ...[
+                  const SizedBox(height: 12),
+                  _ManualRefreshSection(
+                    webAuthController: _controller,
+                    manualRefreshController: widget.manualRefreshController!,
+                    onSnapshotSaved: widget.onParsedSnapshotSaved,
+                  ),
+                ],
                 if (widget.pageTextExtractionController != null) ...[
                   const SizedBox(height: 12),
                   ExtractionStatusCard(
@@ -134,6 +150,52 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
         );
       },
     );
+  }
+}
+
+class _ManualRefreshSection extends StatelessWidget {
+  const _ManualRefreshSection({
+    required this.webAuthController,
+    required this.manualRefreshController,
+    required this.onSnapshotSaved,
+  });
+
+  final WebViewAuthController webAuthController;
+  final ManualRefreshController manualRefreshController;
+  final ValueChanged<QuotaSnapshot>? onSnapshotSaved;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ManualRefreshButton(
+          isBusy: manualRefreshController.isBusy,
+          onPressed: () => unawaited(_runManualRefresh()),
+        ),
+        const SizedBox(height: 12),
+        ManualRefreshStatusCard(controller: manualRefreshController),
+        const SizedBox(height: 12),
+        ManualRefreshResultCard(
+          controller: manualRefreshController,
+          onSnapshotSaved: onSnapshotSaved,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _runManualRefresh() async {
+    final saved = await manualRefreshController.refreshFromCurrentPage(
+      ManualRefreshPageState(
+        currentUrl: webAuthController.currentUrl,
+        pageTitle: webAuthController.pageTitle,
+        isLoading: webAuthController.isLoading,
+        isReady: webAuthController.isReady,
+      ),
+    );
+    if (saved != null) {
+      onSnapshotSaved?.call(saved);
+    }
   }
 }
 
