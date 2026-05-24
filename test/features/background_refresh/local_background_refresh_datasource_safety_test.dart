@@ -34,31 +34,34 @@ void main() {
     expect(loaded.fiveHourWindow.remainingRatio, isNotNull);
   });
 
-  test('background failure metadata ignores nested extracted and parser text', () async {
-    final storage = MemoryJsonStorage();
-    await storage.writeString(
-      LocalStorageKeys.manualRefreshResult,
-      jsonEncode({
-        'status': 'parseFailed',
-        'startedAt': '2026-01-01T12:00:00.000',
-        'finishedAt': '2026-01-01T12:00:05.000',
-        'extractedPageText': {
-          'redactedTextPreview': 'raw page text should not be used',
-        },
-        'parseResult': {
-          'credits': {'rawText': 'token=secret'},
-        },
-      }),
-    );
+  test(
+    'background failure metadata ignores nested extracted and parser text',
+    () async {
+      final storage = MemoryJsonStorage();
+      await storage.writeString(
+        LocalStorageKeys.manualRefreshResult,
+        jsonEncode({
+          'status': 'parseFailed',
+          'startedAt': '2026-01-01T12:00:00.000',
+          'finishedAt': '2026-01-01T12:00:05.000',
+          'extractedPageText': {
+            'redactedTextPreview': 'raw page text should not be used',
+          },
+          'parseResult': {
+            'credits': {'rawText': 'token=secret'},
+          },
+        }),
+      );
 
-    final dataSource = LocalBackgroundRefreshDataSource(
-      storage: storage,
-      clock: FixedClock(DateTime(2026, 1, 1, 13)),
-    );
-    final metadata = await dataSource.loadLastRefreshFailureMetadata();
+      final dataSource = LocalBackgroundRefreshDataSource(
+        storage: storage,
+        clock: FixedClock(DateTime(2026, 1, 1, 13)),
+      );
+      final metadata = await dataSource.loadLastRefreshFailureMetadata();
 
-    expect(metadata.failed, isTrue);
-    expect(metadata.statusLabel, 'parse failed');
-    expect(metadata.occurredAt, DateTime(2026, 1, 1, 12, 0, 5));
-  });
+      expect(metadata.failed, isTrue);
+      expect(metadata.statusLabel, 'parse failed');
+      expect(metadata.occurredAt, DateTime(2026, 1, 1, 12, 0, 5));
+    },
+  );
 }

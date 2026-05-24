@@ -27,32 +27,31 @@ void main() {
   });
 
   test('interval and threshold deserialize by string', () {
-    final settings = BackgroundRefreshSettings.fromJson(
-      const {
-        'mode': 'notifyOnly',
-        'checkInterval': 'twoHours',
-        'staleDataThreshold': 'sixHours',
-      },
-      fallbackUpdatedAt: DateTime(2026),
-    );
+    final settings = BackgroundRefreshSettings.fromJson(const {
+      'mode': 'notifyOnly',
+      'checkInterval': 'twoHours',
+      'staleDataThreshold': 'sixHours',
+    }, fallbackUpdatedAt: DateTime(2026));
 
     expect(settings.checkInterval, BackgroundCheckInterval.twoHours);
     expect(settings.staleDataThreshold, BackgroundStaleThreshold.sixHours);
   });
 
   test('JSON round trip keeps notification settings', () {
-    final original = BackgroundRefreshSettings.defaults(DateTime(2026)).copyWith(
-      mode: BackgroundRefreshMode.notifyOnly,
-      checkInterval: BackgroundCheckInterval.thirtyMinutes,
-      staleDataThreshold: BackgroundStaleThreshold.oneHour,
-      notificationSettings: BackgroundRefreshSettings.defaults(
-        DateTime(2026),
-      ).notificationSettings.copyWith(
-        localNotificationsEnabled: true,
-        lowFiveHourQuotaThreshold: QuotaNotificationThreshold.below20,
-        lowWeeklyQuotaThreshold: QuotaNotificationThreshold.below10,
-      ),
-    );
+    final original = BackgroundRefreshSettings.defaults(DateTime(2026))
+        .copyWith(
+          mode: BackgroundRefreshMode.notifyOnly,
+          checkInterval: BackgroundCheckInterval.thirtyMinutes,
+          staleDataThreshold: BackgroundStaleThreshold.oneHour,
+          notificationSettings:
+              BackgroundRefreshSettings.defaults(
+                DateTime(2026),
+              ).notificationSettings.copyWith(
+                localNotificationsEnabled: true,
+                lowFiveHourQuotaThreshold: QuotaNotificationThreshold.below20,
+                lowWeeklyQuotaThreshold: QuotaNotificationThreshold.below10,
+              ),
+        );
 
     final copy = BackgroundRefreshSettings.fromJson(
       original.toJson(),
@@ -62,9 +61,13 @@ void main() {
     expect(copy.mode, original.mode);
     expect(copy.checkInterval, original.checkInterval);
     expect(copy.staleDataThreshold, original.staleDataThreshold);
-    expect(copy.notificationSettings.lowFiveHourQuotaThreshold,
-        QuotaNotificationThreshold.below20);
-    expect(copy.notificationSettings.lowWeeklyQuotaThreshold,
-        QuotaNotificationThreshold.below10);
+    expect(
+      copy.notificationSettings.lowFiveHourQuotaThreshold,
+      QuotaNotificationThreshold.below20,
+    );
+    expect(
+      copy.notificationSettings.lowWeeklyQuotaThreshold,
+      QuotaNotificationThreshold.below10,
+    );
   });
 }

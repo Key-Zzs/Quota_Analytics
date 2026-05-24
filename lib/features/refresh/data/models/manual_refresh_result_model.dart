@@ -12,6 +12,7 @@ import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../domain/entities/manual_refresh_result.dart';
 import '../../domain/entities/manual_refresh_status.dart';
+import '../../domain/entities/reload_before_refresh_result.dart';
 
 class ManualRefreshResultModel extends ManualRefreshResult {
   const ManualRefreshResultModel({
@@ -27,6 +28,7 @@ class ManualRefreshResultModel extends ManualRefreshResult {
     required super.startedAt,
     required super.finishedAt,
     required super.savedSnapshotId,
+    super.reloadBeforeRefreshResult,
   });
 
   factory ManualRefreshResultModel.fromEntity(ManualRefreshResult result) {
@@ -43,6 +45,7 @@ class ManualRefreshResultModel extends ManualRefreshResult {
       startedAt: result.startedAt,
       finishedAt: result.finishedAt,
       savedSnapshotId: result.savedSnapshotId,
+      reloadBeforeRefreshResult: result.reloadBeforeRefreshResult,
     );
   }
 
@@ -66,6 +69,9 @@ class ManualRefreshResultModel extends ManualRefreshResult {
       startedAt: startedAt,
       finishedAt: dateTimeFromIso8601(json['finishedAt']),
       savedSnapshotId: _readNullableString(json['savedSnapshotId']),
+      reloadBeforeRefreshResult: _readReloadResult(
+        json['reloadBeforeRefreshResult'],
+      ),
     );
   }
 
@@ -89,6 +95,7 @@ class ManualRefreshResultModel extends ManualRefreshResult {
       'startedAt': dateTimeToIso8601(startedAt),
       'finishedAt': dateTimeToIso8601(finishedAt),
       'savedSnapshotId': savedSnapshotId,
+      'reloadBeforeRefreshResult': reloadBeforeRefreshResult?.toJson(),
     };
   }
 
@@ -203,6 +210,11 @@ class ManualRefreshResultModel extends ManualRefreshResult {
       redactedSecretCount: _readInt(json['redactedSecretCount']) ?? 0,
       truncated: _readBool(json['truncated']),
     );
+  }
+
+  static ReloadBeforeRefreshResult? _readReloadResult(Object? value) {
+    final json = _readMap(value);
+    return json == null ? null : ReloadBeforeRefreshResult.fromJson(json);
   }
 
   static ExtractionSafetyStatus _readSafetyStatus(Object? value) {

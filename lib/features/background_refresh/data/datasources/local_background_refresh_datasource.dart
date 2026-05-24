@@ -176,7 +176,9 @@ class LocalBackgroundRefreshDataSource {
     if (value is! Map) {
       return QuotaWindowModel.empty(fallbackLabel);
     }
-    final json = value.map((key, mapValue) => MapEntry(key.toString(), mapValue));
+    final json = value.map(
+      (key, mapValue) => MapEntry(key.toString(), mapValue),
+    );
     return QuotaWindowModel(
       label: _readString(json['label']) ?? fallbackLabel,
       used: _readInt(json['used']),

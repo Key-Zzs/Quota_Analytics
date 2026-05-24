@@ -7,12 +7,13 @@ information. Stage 8 adds Android background task infrastructure and local
 notifications while preserving the foreground-only WebView acquisition
 boundary.
 
-Stage 8 does not implement cookies, tokens, storage reads, HTML extraction,
-backend calls, hidden WebView scraping, or true background web refresh. The
-WebView login container, text extraction flow, parser, manual refresh
-orchestration, foreground auto refresh orchestration, background local-check
-orchestration, notifications, and quota persistence remain intentionally
-separate.
+Stage 8.1 adds foreground-only reload-before-refresh for manual and foreground
+auto refresh. Stage 8.1 does not implement cookies, tokens, storage reads,
+HTML extraction, backend calls, hidden WebView scraping, or true background web
+refresh. The WebView login container, text extraction flow, parser, manual
+refresh orchestration, foreground auto refresh orchestration, background
+local-check orchestration, notifications, and quota persistence remain
+intentionally separate.
 
 ## Layers
 
@@ -33,11 +34,14 @@ The app uses a feature-first Clean Architecture layout:
   redacted preview storage, controller state, and widgets.
 - `features/parser`: Stage 5 local parser domain model, regex parser,
   confidence rules, result-to-snapshot mapper, controller state, and widgets.
-- `features/refresh`: Stage 6 manual refresh orchestration, typed status/result
-  model, save policy, persisted last result, use cases, controller, and widgets.
+- `features/refresh`: Stage 6 manual refresh orchestration plus Stage 8.1
+  reload-before-refresh policy, status/result model, reload service, page load
+  waiter, save policy, persisted last result, use cases, controller, and
+  widgets.
 - `features/auto_refresh`: Stage 7 foreground lifecycle/timer orchestration,
-  eligibility rules, status model, repository adapter, controller, and status
-  widget. It reuses Stage 6 and does not read WebView JavaScript directly.
+  Stage 8.1 optional foreground reload-before-auto-refresh, eligibility rules,
+  status model, repository adapter, controller, and status widget. It reuses
+  Stage 6 and does not read WebView JavaScript directly.
 - `features/background_refresh`: Stage 8 Android WorkManager scheduling,
   background eligibility, local snapshot staleness/low-quota/failure checks,
   notify-only fallback, last-run metadata, and Settings/Debug UI. It does not
@@ -148,7 +152,9 @@ The auth feature owns the WebView login container:
   denies WebView permission requests, reports navigation metadata, and clears
   WebView cache/local data where supported.
 - `WebViewAuthController`: testable presentation state for sanitized current
-  URL, page title, progress, last navigation time, last error, and auth status.
+  URL, page title, progress, page-start/page-finish timestamps, last WebView
+  resource error, last reload status/duration/error, last navigation time, and
+  auth status.
 - `WebViewLoginPage`: Material 3 UI for safety notices, navigation controls,
   status, and the WebView container.
 
@@ -220,17 +226,33 @@ or network access. Its only app input is Stage 4 redacted visible text.
 
 ## Refresh Feature
 
-The refresh feature owns Stage 6 manual orchestration:
+The refresh feature owns Stage 6 manual orchestration and the Stage 8.1
+reload-before-refresh use case:
 
 - `ManualRefreshStatus`: typed state machine from `checkingPage` through
   extraction, redaction, parsing, confirmation, saving, saved, and failure
   states.
 - `ManualRefreshResult`: status, extraction safety status, parser confidence,
   warnings/errors, candidate snapshot, redaction summary, duration, and saved
-  snapshot id. It does not contain raw unredacted text.
+  snapshot id. It may contain a safe `ReloadBeforeRefreshResult` summary. It
+  does not contain raw unredacted text.
 - `ManualRefreshPolicy`: conservative save policy. High confidence can
   auto-save only if enabled; medium requires confirmation; low is blocked by
   default.
+- `ReloadBeforeRefreshPolicy`: foreground reload configuration. Manual reload
+  defaults on; foreground auto reload defaults off. Timeout, settle delay,
+  cooldown, and max consecutive failures are centralized here.
+- `ReloadBeforeRefreshStatus` and `ReloadBeforeRefreshResult`: safe status
+  model for `checkingUrl`, `reloading`, `waitingForPageFinished`,
+  `waitingForSettleDelay`, `completed`, `loginRequired`, timeout, cancellation,
+  cooldown, and blocked states. URLs are sanitized.
+- `WebViewReloadService`: small adapter contract for calling reload on the
+  current foreground WebView and recording safe reload metadata.
+- `PageLoadWaiter`: waits for page-finished/loading-false, supports timeout,
+  cancellation, and settle delay. It does not execute JavaScript.
+- `ReloadPageBeforeRefreshUseCase`: coordinates URL safety, duplicate/cooldown
+  checks, foreground cancellation, reload, page-finished wait, settle delay,
+  login/auth detection, and safe result reporting.
 - `RefreshQuotaFromWebView`: checks current WebView page state and URL safety,
   calls the extraction repository, parses redacted text, maps high/medium
   results to a candidate snapshot, applies policy, and optionally auto-saves
@@ -245,8 +267,23 @@ The refresh feature owns Stage 6 manual orchestration:
   `ManualRefreshResultCard`, and `SaveSnapshotConfirmation`: UI widgets for the
   user-triggered flow.
 
-The refresh feature composes extraction, parser, and persistence. It does not
-own WebView JavaScript, parser regexes, or direct `shared_preferences` access.
+Manual refresh now follows:
+
+```text
+Manual Refresh
+  -> optional ReloadPageBeforeRefreshUseCase
+  -> safety check
+  -> document.body.innerText extraction
+  -> redaction
+  -> parser
+  -> confidence policy
+  -> candidate/save
+```
+
+The refresh feature composes foreground WebView reload, extraction, parser, and
+persistence. It does not own WebView JavaScript, parser regexes, direct
+`shared_preferences` access, cookies, tokens, storage, HTML, network responses,
+or background execution.
 
 ## Auto Refresh Feature
 
@@ -263,13 +300,24 @@ The auto refresh feature owns Stage 7 foreground orchestration:
 - `ForegroundAutoRefreshRepository`: adapter that calls
   `ManualRefreshController.refreshFromCurrentPage`.
 - `ForegroundAutoRefreshController`: `WidgetsBindingObserver` lifecycle bridge,
-  foreground timer owner, duplicate guard, and status publisher.
+  foreground timer owner, duplicate guard, optional reload-before-refresh
+  caller, foreground cancellation owner, and status publisher.
 - `AutoRefreshStatusCard`: Settings status display.
 
 The controller starts its timer only when settings are enabled and lifecycle is
 `resumed`. It stops on `paused`, `inactive`, `hidden`, `detached`, and dispose.
+Foreground auto refresh now follows:
+
+```text
+Foreground Auto Refresh
+  -> interval and lifecycle eligibility
+  -> optional ReloadPageBeforeRefreshUseCase
+  -> Stage 6 manual refresh pipeline with manual reload disabled
+```
+
 It never opens a WebView page, logs in, reads cookies/tokens/storage, reads
-HTML, uploads data, or parses outside the Stage 6 manual refresh use case.
+HTML, uploads data, runs while backgrounded, or parses outside the Stage 6
+manual refresh use case.
 
 ## Background Refresh Feature
 
@@ -297,9 +345,10 @@ The background refresh feature owns Stage 8 Android background orchestration:
   `BackgroundRefreshSettingsSection`, and `BackgroundRefreshStatusCard`:
   Settings/Debug UI.
 
-`background_refresh` intentionally does not import auth, extraction, parser, or
-WebView data sources. It cannot open pages, inject JavaScript, read cookies,
-read browser storage, read HTML, or read page text.
+`background_refresh` intentionally does not import auth, extraction, parser,
+WebView data sources, `WebViewReloadService`, or
+`ReloadPageBeforeRefreshUseCase`. It cannot open pages, reload pages, inject
+JavaScript, read cookies, read browser storage, read HTML, or read page text.
 
 `backgroundSafeDataSourceOnly` is an architectural placeholder. It is reserved
 for a future official API, desktop agent, or browser extension sync adapter. The

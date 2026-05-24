@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../refresh/domain/entities/reload_before_refresh_policy.dart';
 import '../../../refresh/domain/entities/manual_refresh_policy.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/refresh_interval.dart';
@@ -34,6 +35,18 @@ class SettingsController extends ChangeNotifier {
       _settings?.refreshInterval ?? RefreshInterval.off;
   ManualRefreshPolicy get manualRefreshPolicy =>
       _settings?.manualRefreshPolicy ?? ManualRefreshPolicy.defaults();
+  bool get reloadBeforeManualRefreshEnabled =>
+      _settings?.reloadBeforeManualRefreshEnabled ?? true;
+  bool get reloadBeforeForegroundAutoRefreshEnabled =>
+      _settings?.reloadBeforeForegroundAutoRefreshEnabled ?? false;
+  ReloadBeforeRefreshPolicy get manualReloadBeforeRefreshPolicy =>
+      ReloadBeforeRefreshPolicy.manualDefault(
+        enabled: reloadBeforeManualRefreshEnabled,
+      );
+  ReloadBeforeRefreshPolicy get foregroundAutoReloadBeforeRefreshPolicy =>
+      ReloadBeforeRefreshPolicy.foregroundAutoDefault(
+        enabled: reloadBeforeForegroundAutoRefreshEnabled,
+      );
   bool get autoSaveHighConfidenceManualRefresh =>
       manualRefreshPolicy.autoSaveHighConfidence;
   String? get message => _message;
@@ -87,6 +100,22 @@ class SettingsController extends ChangeNotifier {
       manualRefreshPolicy: current.manualRefreshPolicy.copyWith(
         autoSaveHighConfidence: value,
       ),
+    );
+    _message = null;
+    notifyListeners();
+  }
+
+  void setReloadBeforeManualRefreshEnabled(bool value) {
+    final current = _settings ?? AppSettings.defaults(DateTime.now());
+    _settings = current.copyWith(reloadBeforeManualRefreshEnabled: value);
+    _message = null;
+    notifyListeners();
+  }
+
+  void setReloadBeforeForegroundAutoRefreshEnabled(bool value) {
+    final current = _settings ?? AppSettings.defaults(DateTime.now());
+    _settings = current.copyWith(
+      reloadBeforeForegroundAutoRefreshEnabled: value,
     );
     _message = null;
     notifyListeners();

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../../core/utils/date_time_format.dart';
 import '../../../extraction/data/datasources/webview_text_extraction_datasource.dart';
 import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
 import '../../../extraction/presentation/widgets/extraction_status_card.dart';
@@ -13,6 +14,7 @@ import '../../../refresh/presentation/controllers/manual_refresh_controller.dart
 import '../../../refresh/presentation/widgets/manual_refresh_button.dart';
 import '../../../refresh/presentation/widgets/manual_refresh_result_card.dart';
 import '../../../refresh/presentation/widgets/manual_refresh_status_card.dart';
+import '../../../settings/presentation/controllers/settings_controller.dart';
 import '../../data/datasources/webview_auth_datasource.dart';
 import '../../data/repositories/webview_auth_repository.dart';
 import '../controllers/webview_auth_controller.dart';
@@ -30,6 +32,7 @@ class WebViewLoginPage extends StatefulWidget {
     this.pageTextExtractionController,
     this.quotaParserController,
     this.manualRefreshController,
+    this.settingsController,
     this.onParsedSnapshotSaved,
     this.webViewBuilder,
   });
@@ -38,6 +41,7 @@ class WebViewLoginPage extends StatefulWidget {
   final PageTextExtractionController? pageTextExtractionController;
   final QuotaParserController? quotaParserController;
   final ManualRefreshController? manualRefreshController;
+  final SettingsController? settingsController;
   final ValueChanged<QuotaSnapshot>? onParsedSnapshotSaved;
   final AuthWebViewBuilder? webViewBuilder;
 
@@ -95,6 +99,7 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
         widget.pageTextExtractionController,
         widget.quotaParserController,
         widget.manualRefreshController,
+        widget.settingsController,
       ]),
       builder: (context, _) {
         return SafeArea(
@@ -143,6 +148,7 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
             pageTextExtractionController: widget.pageTextExtractionController,
             quotaParserController: widget.quotaParserController,
             manualRefreshController: widget.manualRefreshController,
+            settingsController: widget.settingsController,
             onSnapshotSaved: widget.onParsedSnapshotSaved,
             onClose: () => Navigator.of(sheetContext).pop(),
           ),
@@ -158,6 +164,7 @@ class _WebViewContainerPanel extends StatelessWidget {
     required this.pageTextExtractionController,
     required this.quotaParserController,
     required this.manualRefreshController,
+    required this.settingsController,
     required this.onSnapshotSaved,
     required this.onClose,
   });
@@ -166,6 +173,7 @@ class _WebViewContainerPanel extends StatelessWidget {
   final PageTextExtractionController? pageTextExtractionController;
   final QuotaParserController? quotaParserController;
   final ManualRefreshController? manualRefreshController;
+  final SettingsController? settingsController;
   final ValueChanged<QuotaSnapshot>? onSnapshotSaved;
   final VoidCallback onClose;
 
@@ -177,6 +185,7 @@ class _WebViewContainerPanel extends StatelessWidget {
         pageTextExtractionController,
         quotaParserController,
         manualRefreshController,
+        settingsController,
       ]),
       builder: (context, _) {
         return ListView(
@@ -214,6 +223,7 @@ class _WebViewContainerPanel extends StatelessWidget {
               pageTextExtractionController: pageTextExtractionController,
               quotaParserController: quotaParserController,
               manualRefreshController: manualRefreshController,
+              settingsController: settingsController,
               onSnapshotSaved: onSnapshotSaved,
             ),
           ],
@@ -229,6 +239,7 @@ class _BottomActionPanel extends StatelessWidget {
     required this.pageTextExtractionController,
     required this.quotaParserController,
     required this.manualRefreshController,
+    required this.settingsController,
     required this.onSnapshotSaved,
   });
 
@@ -236,6 +247,7 @@ class _BottomActionPanel extends StatelessWidget {
   final PageTextExtractionController? pageTextExtractionController;
   final QuotaParserController? quotaParserController;
   final ManualRefreshController? manualRefreshController;
+  final SettingsController? settingsController;
   final ValueChanged<QuotaSnapshot>? onSnapshotSaved;
 
   @override
@@ -251,6 +263,25 @@ class _BottomActionPanel extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
+            if (settingsController != null && manualRefreshController != null)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Reload page before manual refresh'),
+                subtitle: Text(
+                  settingsController!.reloadBeforeManualRefreshEnabled
+                      ? 'Manual Refresh will reload the page first.'
+                      : 'Manual Refresh reads the current rendered page.',
+                ),
+                value: settingsController!.reloadBeforeManualRefreshEnabled,
+                onChanged: settingsController!.isSaving
+                    ? null
+                    : (value) =>
+                          unawaited(_setReloadBeforeManualRefresh(value)),
+              ),
+            if (settingsController != null && manualRefreshController != null)
+              _ReloadStatusSummary(webAuthController: webAuthController),
+            if (settingsController != null && manualRefreshController != null)
+              const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
               child: SingleChildScrollView(
@@ -333,6 +364,47 @@ class _BottomActionPanel extends StatelessWidget {
     if (saved != null) {
       onSnapshotSaved?.call(saved);
     }
+  }
+
+  Future<void> _setReloadBeforeManualRefresh(bool value) async {
+    final controller = settingsController;
+    if (controller == null) {
+      return;
+    }
+    controller.setReloadBeforeManualRefreshEnabled(value);
+    await controller.save();
+  }
+}
+
+class _ReloadStatusSummary extends StatelessWidget {
+  const _ReloadStatusSummary({required this.webAuthController});
+
+  final WebViewAuthController webAuthController;
+
+  @override
+  Widget build(BuildContext context) {
+    final error = webAuthController.lastReloadError;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: DefaultTextStyle.merge(
+        style: Theme.of(context).textTheme.bodySmall,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Last reload status: ${webAuthController.lastReloadStatus}'),
+            Text(
+              'Last reload duration: ${formatDuration(webAuthController.lastReloadDuration)}',
+            ),
+            const Text('Reload timeout: 15 seconds'),
+            if (error != null)
+              Text(
+                'Last reload error: $error',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

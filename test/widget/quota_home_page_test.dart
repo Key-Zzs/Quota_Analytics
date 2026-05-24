@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.textContaining('Stage 8:'), findsOneWidget);
+    expect(find.textContaining('Stage 8.1:'), findsOneWidget);
     expect(find.text('Go to Web Refresh'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
@@ -88,6 +88,14 @@ void main() {
     expect(find.text('No background refresh'), findsOneWidget);
     expect(find.text('No automatic login'), findsOneWidget);
     expect(find.text('Uses current WebView page only'), findsOneWidget);
+    expect(
+      find.text('Reload page before foreground auto refresh'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Only works while the app is in the foreground.'),
+      findsOneWidget,
+    );
     expect(find.text('Off'), findsWidgets);
 
     await tester.tap(find.byType(DropdownButtonFormField<RefreshInterval>));
@@ -103,6 +111,11 @@ void main() {
 
     expect(find.text('Auto refresh: On'), findsOneWidget);
     expect(find.text('Interval: 30 minutes'), findsOneWidget);
+    expect(find.text('Reload before manual refresh: On'), findsOneWidget);
+    expect(
+      find.text('Reload before foreground auto refresh: Off'),
+      findsOneWidget,
+    );
     expect(
       find.text('Manual refresh auto-save high confidence: Off'),
       findsOneWidget,

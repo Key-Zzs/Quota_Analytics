@@ -6,6 +6,7 @@ import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import 'manual_refresh_policy.dart';
 import 'manual_refresh_status.dart';
+import 'reload_before_refresh_result.dart';
 
 class ManualRefreshResult {
   const ManualRefreshResult({
@@ -21,6 +22,7 @@ class ManualRefreshResult {
     required this.startedAt,
     required this.finishedAt,
     required this.savedSnapshotId,
+    this.reloadBeforeRefreshResult,
   });
 
   factory ManualRefreshResult.idle(DateTime now) {
@@ -37,6 +39,7 @@ class ManualRefreshResult {
       startedAt: now,
       finishedAt: null,
       savedSnapshotId: null,
+      reloadBeforeRefreshResult: null,
     );
   }
 
@@ -52,6 +55,7 @@ class ManualRefreshResult {
   final DateTime startedAt;
   final DateTime? finishedAt;
   final String? savedSnapshotId;
+  final ReloadBeforeRefreshResult? reloadBeforeRefreshResult;
 
   Duration? get duration {
     final finished = finishedAt;
@@ -84,6 +88,7 @@ class ManualRefreshResult {
     DateTime? startedAt,
     DateTime? finishedAt,
     String? savedSnapshotId,
+    ReloadBeforeRefreshResult? reloadBeforeRefreshResult,
   }) {
     return ManualRefreshResult(
       status: status ?? this.status,
@@ -98,6 +103,8 @@ class ManualRefreshResult {
       startedAt: startedAt ?? this.startedAt,
       finishedAt: finishedAt ?? this.finishedAt,
       savedSnapshotId: savedSnapshotId ?? this.savedSnapshotId,
+      reloadBeforeRefreshResult:
+          reloadBeforeRefreshResult ?? this.reloadBeforeRefreshResult,
     );
   }
 }

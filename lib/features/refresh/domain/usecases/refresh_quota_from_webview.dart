@@ -13,6 +13,7 @@ import '../entities/manual_refresh_page_state.dart';
 import '../entities/manual_refresh_policy.dart';
 import '../entities/manual_refresh_result.dart';
 import '../entities/manual_refresh_status.dart';
+import '../entities/reload_before_refresh_result.dart';
 import '../repositories/manual_refresh_repository.dart';
 import 'save_manual_refresh_snapshot.dart';
 
@@ -39,6 +40,7 @@ class RefreshQuotaFromWebView {
   Future<ManualRefreshResult> call({
     required ManualRefreshPageState pageState,
     required ManualRefreshPolicy policy,
+    ReloadBeforeRefreshResult? reloadBeforeRefreshResult,
     ManualRefreshProgressCallback? onProgress,
   }) async {
     final startedAt = clock.now();
@@ -66,6 +68,7 @@ class RefreshQuotaFromWebView {
         startedAt: startedAt,
         finishedAt: status.isTerminal ? clock.now() : null,
         savedSnapshotId: null,
+        reloadBeforeRefreshResult: reloadBeforeRefreshResult,
       );
       onProgress?.call(result);
       return result;

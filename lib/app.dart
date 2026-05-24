@@ -45,6 +45,10 @@ import 'features/quota/presentation/controllers/quota_controller.dart';
 import 'features/quota/presentation/pages/quota_home_page.dart';
 import 'features/refresh/data/datasources/local_manual_refresh_datasource.dart';
 import 'features/refresh/data/repositories/manual_refresh_repository_impl.dart';
+import 'features/refresh/data/services/page_load_waiter.dart';
+import 'features/refresh/data/services/webview_reload_service.dart';
+import 'features/refresh/domain/entities/manual_refresh_page_state.dart';
+import 'features/refresh/domain/usecases/reload_page_before_refresh.dart';
 import 'features/refresh/domain/usecases/refresh_quota_from_webview.dart';
 import 'features/refresh/domain/usecases/save_manual_refresh_snapshot.dart';
 import 'features/refresh/presentation/controllers/manual_refresh_controller.dart';
@@ -251,6 +255,7 @@ class _QuotaShellState extends State<QuotaShell> {
         pageTextExtractionController: controllers.pageTextExtractionController,
         quotaParserController: controllers.quotaParserController,
         manualRefreshController: controllers.manualRefreshController,
+        settingsController: controllers.settingsController,
         onParsedSnapshotSaved: controllers.quotaController.applySavedSnapshot,
       );
     }
@@ -309,6 +314,12 @@ class _QuotaShellState extends State<QuotaShell> {
     final settingsController = SettingsController(
       repository: settingsRepository,
     );
+    final webAuthController = WebViewAuthController(clock: effectiveClock);
+    final reloadPageBeforeRefresh = ReloadPageBeforeRefreshUseCase(
+      reloadService: WebViewAuthReloadService(controller: webAuthController),
+      pageLoadWaiter: const PageLoadWaiter(),
+      clock: effectiveClock,
+    );
     final saveManualRefreshSnapshot = SaveManualRefreshSnapshot(
       quotaRepository: quotaRepository,
       manualRefreshRepository: manualRefreshRepository,
@@ -327,6 +338,15 @@ class _QuotaShellState extends State<QuotaShell> {
       saveManualRefreshSnapshot: saveManualRefreshSnapshot,
       manualRefreshRepository: manualRefreshRepository,
       policyProvider: () => settingsController.manualRefreshPolicy,
+      reloadPageBeforeRefresh: reloadPageBeforeRefresh,
+      reloadBeforeManualRefreshPolicyProvider: () =>
+          settingsController.manualReloadBeforeRefreshPolicy,
+      currentPageStateProvider: () => ManualRefreshPageState(
+        currentUrl: webAuthController.currentUrl,
+        pageTitle: webAuthController.pageTitle,
+        isLoading: webAuthController.isLoading,
+        isReady: webAuthController.isReady,
+      ),
       clock: effectiveClock,
     );
     final autoRefreshPolicy = AutoRefreshPolicy();
@@ -334,11 +354,11 @@ class _QuotaShellState extends State<QuotaShell> {
       manualRefreshController: manualRefreshController,
     );
     final quotaController = QuotaController(repository: quotaRepository);
-    final webAuthController = WebViewAuthController(clock: effectiveClock);
     final autoRefreshController = ForegroundAutoRefreshController(
       settingsController: settingsController,
       webAuthController: webAuthController,
       manualRefreshController: manualRefreshController,
+      reloadPageBeforeRefresh: reloadPageBeforeRefresh,
       evaluateEligibility: EvaluateAutoRefreshEligibility(
         policy: autoRefreshPolicy,
       ),

@@ -1,5 +1,58 @@
 # Security
 
+## Stage 8.1 Reload-Before-Refresh Boundary
+
+Stage 8.1 adds optional reload-before-refresh for manual refresh and
+foreground auto refresh. Reload is foreground-only and uses the currently
+visible WebView. It does not add background WebView refresh, hidden WebViews,
+automatic login, or any new data source.
+
+Manual refresh reload is on by default because a user tap usually means the
+latest rendered official usage page is desired. Foreground auto reload is off
+by default because automatic reloads can increase login, reliability, battery,
+and rate-limit risk. Users must explicitly enable it.
+
+Reload-before-refresh may do only this sequence:
+
+1. Check that the current WebView exists.
+2. Check that the current sanitized URL is HTTPS and allowlisted.
+3. Reload the current foreground WebView page.
+4. Wait for page finish with timeout.
+5. Wait for a short settle delay.
+6. Continue into the existing Stage 6 pipeline, which reads only
+   `document.body.innerText`.
+
+Stage 8.1 does not read or extract:
+
+- `document.cookie`
+- WebView cookies or system browser cookies
+- `localStorage`
+- `sessionStorage`
+- `indexedDB`
+- Access tokens, refresh tokens, session tokens, authorization headers, or
+  network requests
+- HTML, DOM structure, scripts, CSS, request headers, or network responses
+
+Reload-before-refresh does not upload page text, parser input, parser output,
+logs, snapshots, or reload metadata. URLs shown in UI or Debug remain sanitized
+with query strings and fragments removed.
+
+If the app leaves `resumed` foreground state while foreground auto reload is
+waiting, reload-before-refresh is cancelled and extraction/parser work does not
+continue. Android background tasks do not call the reload service, do not open
+the usage page, and do not execute JavaScript.
+
+The default reload constants are centralized in `ReloadBeforeRefreshPolicy`:
+
+- Reload timeout: 15 seconds.
+- Page settle delay: 800 ms.
+- Reload cooldown: 30 seconds.
+- Max consecutive reload failures: 3.
+
+Reload can land on a login/auth page or trigger official-site loading issues.
+In that case the result is reported as `loginRequired`, `timeout`, `failed`, or
+another safe status, and extraction is skipped.
+
 ## Stage 8 Background Refresh And Notifications Boundary
 
 Stage 8 adds Android WorkManager scheduling and local notifications. It does not

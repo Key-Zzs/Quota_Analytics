@@ -28,7 +28,10 @@ void main() {
     expect(find.text('Android Background Refresh'), findsOneWidget);
     expect(find.text('Background refresh mode'), findsOneWidget);
     expect(find.text('Notify only'), findsOneWidget);
-    expect(find.textContaining('Notification permission status'), findsOneWidget);
+    expect(
+      find.textContaining('Notification permission status'),
+      findsOneWidget,
+    );
     expect(
       find.text(
         'Background refresh does not access WebView, cookies, tokens, or page text.',
@@ -63,8 +66,14 @@ void main() {
     expect(find.text('Stage 8 Background Refresh'), findsOneWidget);
     expect(find.textContaining('Last background run status'), findsOneWidget);
     expect(find.text('No hidden WebView background extraction'), findsWidgets);
-    expect(find.text('No background cookie/token/storage access'), findsWidgets);
-    expect(find.text('No background page text or HTML extraction'), findsOneWidget);
+    expect(
+      find.text('No background cookie/token/storage access'),
+      findsWidgets,
+    );
+    expect(
+      find.text('No background page text or HTML extraction'),
+      findsOneWidget,
+    );
 
     await tester.scrollUntilVisible(
       find.text('Notification cooldown state'),

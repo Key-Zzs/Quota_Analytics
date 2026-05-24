@@ -31,6 +31,7 @@ void main() {
     expect(controller.loadingProgress, 0);
     expect(controller.currentUrl, 'https://chatgpt.com/auth/login');
     expect(controller.currentUrl, isNot(contains('secret')));
+    expect(controller.lastPageStartedAt, DateTime(2026, 1, 1, 12));
     expect(controller.authStatus, WebAuthStatus.loggedOut);
   });
 
@@ -47,6 +48,7 @@ void main() {
     expect(controller.loadingProgress, 100);
     expect(controller.currentUrl, 'https://chatgpt.com/settings');
     expect(controller.pageTitle, 'Settings');
+    expect(controller.lastPageFinishedAt, DateTime(2026, 1, 1, 12));
     expect(controller.authStatus, WebAuthStatus.maybeLoggedIn);
   });
 
@@ -69,6 +71,8 @@ void main() {
     expect(controller.lastError, contains('hostLookup'));
     expect(controller.lastError, isNot(contains('secret')));
     expect(controller.lastError, isNot(contains('#')));
+    expect(controller.lastWebResourceError, controller.lastError);
+    expect(controller.lastWebResourceErrorAt, DateTime(2026, 1, 1, 12));
   });
 
   test('clearWebViewData updates controller state', () async {

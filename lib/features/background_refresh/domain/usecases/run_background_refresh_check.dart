@@ -28,15 +28,15 @@ class RunBackgroundRefreshCheck {
 
     try {
       final settings = await backgroundRepository.getSettings();
-      final latestSnapshot =
-          await backgroundRepository.getLatestSnapshotForBackground();
-      final refreshFailure =
-          await backgroundRepository.getLastRefreshFailureMetadata();
+      final latestSnapshot = await backgroundRepository
+          .getLatestSnapshotForBackground();
+      final refreshFailure = await backgroundRepository
+          .getLastRefreshFailureMetadata();
       final lastRun = await backgroundRepository.getLastResult();
-      final permissionStatus =
-          await notificationRepository.getPermissionStatus();
-      final hasBackgroundSafeDataSource =
-          await backgroundRepository.hasBackgroundSafeDataSource();
+      final permissionStatus = await notificationRepository
+          .getPermissionStatus();
+      final hasBackgroundSafeDataSource = await backgroundRepository
+          .hasBackgroundSafeDataSource();
 
       final eligibility = evaluateEligibility(
         settings: settings,
@@ -132,10 +132,14 @@ class RunBackgroundRefreshCheck {
     if (sentCandidates.any((candidate) => candidate.type.name == 'staleData')) {
       return BackgroundRefreshStatus.staleDataNotificationSent;
     }
-    if (sentCandidates.any((candidate) => candidate.type.name.startsWith('low'))) {
+    if (sentCandidates.any(
+      (candidate) => candidate.type.name.startsWith('low'),
+    )) {
       return BackgroundRefreshStatus.lowQuotaNotificationSent;
     }
-    if (sentCandidates.any((candidate) => candidate.type.name == 'refreshFailed')) {
+    if (sentCandidates.any(
+      (candidate) => candidate.type.name == 'refreshFailed',
+    )) {
       return BackgroundRefreshStatus.refreshFailureNotificationSent;
     }
     if (eligibility.status ==

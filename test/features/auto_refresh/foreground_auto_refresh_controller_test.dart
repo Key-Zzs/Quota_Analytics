@@ -25,11 +25,16 @@ import 'package:quota_analytics/features/quota/domain/entities/parser_confidence
 import 'package:quota_analytics/features/quota/domain/entities/quota_persistence_status.dart';
 import 'package:quota_analytics/features/quota/domain/entities/quota_snapshot.dart';
 import 'package:quota_analytics/features/quota/domain/repositories/quota_repository.dart';
+import 'package:quota_analytics/features/refresh/data/services/page_load_waiter.dart';
+import 'package:quota_analytics/features/refresh/data/services/webview_reload_service.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_page_state.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_result.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_status.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_policy.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_result.dart';
 import 'package:quota_analytics/features/refresh/domain/repositories/manual_refresh_repository.dart';
+import 'package:quota_analytics/features/refresh/domain/usecases/reload_page_before_refresh.dart';
 import 'package:quota_analytics/features/refresh/domain/usecases/refresh_quota_from_webview.dart';
 import 'package:quota_analytics/features/refresh/domain/usecases/save_manual_refresh_snapshot.dart';
 import 'package:quota_analytics/features/refresh/presentation/controllers/manual_refresh_controller.dart';
@@ -162,6 +167,100 @@ void main() {
     expect(harness.controller.state.status, AutoRefreshStatus.failed);
     harness.dispose();
   });
+
+  test('reload-before-auto enabled -> reload first', () async {
+    final events = <String>[];
+    final harness = await _buildHarness(
+      reloadBeforeAutoEnabled: true,
+      reloadService: _FakeReloadService(events: events),
+      events: events,
+    );
+
+    await harness.controller.checkNow();
+
+    expect(events, containsAllInOrder(['reload', 'refresh']));
+    expect(harness.repository.calls, 1);
+    harness.dispose();
+  });
+
+  test('app not resumed -> no reload', () async {
+    final events = <String>[];
+    final harness = await _buildHarness(
+      initialLifecycleState: AppLifecycleState.paused,
+      reloadBeforeAutoEnabled: true,
+      reloadService: _FakeReloadService(events: events),
+      events: events,
+    );
+
+    await harness.controller.checkNow();
+
+    expect(events, isEmpty);
+    expect(harness.repository.calls, 0);
+    expect(
+      harness.controller.state.status,
+      AutoRefreshStatus.skippedNotForeground,
+    );
+    harness.dispose();
+  });
+
+  test('app paused during reload -> cancelled without extraction', () async {
+    final events = <String>[];
+    final harness = await _buildHarness(
+      reloadBeforeAutoEnabled: true,
+      reloadService: _FakeReloadService(events: events, autoFinish: false),
+      reloadTimeout: const Duration(milliseconds: 80),
+      events: events,
+    );
+
+    final future = harness.controller.checkNow();
+    await Future<void>.delayed(Duration.zero);
+    harness.controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+    await future;
+
+    expect(events, ['reload']);
+    expect(harness.repository.calls, 0);
+    expect(
+      harness.controller.state.status,
+      AutoRefreshStatus.skippedNotForeground,
+    );
+    harness.dispose();
+  });
+
+  test('reload timeout -> auto refresh records failure and cooldown', () async {
+    final events = <String>[];
+    final harness = await _buildHarness(
+      reloadBeforeAutoEnabled: true,
+      reloadService: _FakeReloadService(events: events, autoFinish: false),
+      reloadTimeout: const Duration(milliseconds: 5),
+      events: events,
+    );
+
+    await harness.controller.checkNow();
+
+    expect(harness.repository.calls, 0);
+    expect(harness.controller.state.status, AutoRefreshStatus.failed);
+    expect(harness.controller.state.cooldownUntil, isNotNull);
+    expect(harness.controller.state.lastError, contains('timed out'));
+    harness.dispose();
+  });
+
+  test('no duplicate refresh while reload active', () async {
+    final events = <String>[];
+    final harness = await _buildHarness(
+      reloadBeforeAutoEnabled: true,
+      reloadService: _FakeReloadService(events: events, autoFinish: false),
+      reloadTimeout: const Duration(milliseconds: 20),
+      events: events,
+    );
+
+    final first = harness.controller.checkNow();
+    final second = harness.controller.checkNow();
+    await Future.wait([first, second]);
+
+    expect(events.where((event) => event == 'reload').length, 1);
+    expect(harness.repository.calls, 0);
+    harness.dispose();
+  });
 }
 
 Future<_Harness> _buildHarness({
@@ -169,6 +268,10 @@ Future<_Harness> _buildHarness({
   AutoRefreshResult? result,
   Completer<AutoRefreshResult>? completer,
   ValueChanged<QuotaSnapshot>? onSnapshotSaved,
+  bool reloadBeforeAutoEnabled = false,
+  _FakeReloadService? reloadService,
+  Duration reloadTimeout = const Duration(milliseconds: 80),
+  List<String>? events,
 }) async {
   final clock = FixedClock(DateTime(2026, 1, 1, 12));
   final settingsController = SettingsController(
@@ -176,6 +279,9 @@ Future<_Harness> _buildHarness({
   );
   await settingsController.load();
   settingsController.setRefreshInterval(RefreshInterval.fiveMinutes);
+  settingsController.setReloadBeforeForegroundAutoRefreshEnabled(
+    reloadBeforeAutoEnabled,
+  );
 
   final webAuthController = WebViewAuthController(
     repository: _FakeWebAuthRepository(),
@@ -193,12 +299,28 @@ Future<_Harness> _buildHarness({
   final repository = _FakeAutoRefreshRepository(
     result: result ?? _autoResult(ManualRefreshStatus.awaitingUserConfirmation),
     completer: completer,
+    events: events,
   );
   final scheduler = _ManualScheduler();
   final controller = ForegroundAutoRefreshController(
     settingsController: settingsController,
     webAuthController: webAuthController,
     manualRefreshController: manualRefreshController,
+    reloadPageBeforeRefresh: reloadService == null
+        ? null
+        : ReloadPageBeforeRefreshUseCase(
+            reloadService: reloadService,
+            pageLoadWaiter: const PageLoadWaiter(),
+            clock: clock,
+          ),
+    reloadBeforeForegroundAutoRefreshPolicyProvider: () =>
+        ReloadBeforeRefreshPolicy.foregroundAutoDefault(
+          enabled: reloadBeforeAutoEnabled,
+        ).copyWith(
+          reloadTimeout: reloadTimeout,
+          pageSettleDelay: const Duration(milliseconds: 1),
+          reloadCooldown: const Duration(milliseconds: 20),
+        ),
     evaluateEligibility: EvaluateAutoRefreshEligibility(policy: policy),
     runForegroundAutoRefresh: RunForegroundAutoRefresh(repository),
     policy: policy,
@@ -314,10 +436,15 @@ class _ManualScheduler implements AutoRefreshScheduler {
 }
 
 class _FakeAutoRefreshRepository implements AutoRefreshRepository {
-  _FakeAutoRefreshRepository({required this.result, this.completer});
+  _FakeAutoRefreshRepository({
+    required this.result,
+    this.completer,
+    this.events,
+  });
 
   final AutoRefreshResult result;
   final Completer<AutoRefreshResult>? completer;
+  final List<String>? events;
   int calls = 0;
 
   @override
@@ -325,10 +452,70 @@ class _FakeAutoRefreshRepository implements AutoRefreshRepository {
 
   @override
   Future<AutoRefreshResult> refreshCurrentPage(
-    ManualRefreshPageState pageState,
-  ) {
+    ManualRefreshPageState pageState, {
+    bool reloadBeforeRefresh = false,
+  }) {
+    events?.add('refresh');
     calls += 1;
     return completer?.future ?? Future.value(result);
+  }
+}
+
+class _FakeReloadService extends ChangeNotifier
+    implements WebViewReloadService {
+  _FakeReloadService({required this.events, this.autoFinish = true});
+
+  final List<String> events;
+  final bool autoFinish;
+
+  @override
+  bool hasWebView = true;
+
+  @override
+  String currentUrl = 'https://chatgpt.com/codex/cloud/settings/analytics';
+
+  @override
+  bool isPageLoading = false;
+
+  @override
+  DateTime? lastPageFinishedAt;
+
+  @override
+  DateTime? lastWebResourceErrorAt;
+
+  @override
+  String? lastWebResourceError;
+
+  DateTime? startedAt;
+  ReloadBeforeRefreshResult? lastResult;
+
+  @override
+  Future<void> reload() async {
+    events.add('reload');
+    isPageLoading = true;
+    notifyListeners();
+    if (!autoFinish) {
+      return;
+    }
+    await Future<void>.delayed(Duration.zero);
+    isPageLoading = false;
+    lastPageFinishedAt = (startedAt ?? DateTime.now()).add(
+      const Duration(milliseconds: 1),
+    );
+    notifyListeners();
+  }
+
+  @override
+  void recordReloadStarted(DateTime startedAt) {
+    this.startedAt = startedAt;
+  }
+
+  @override
+  void recordReloadResult(
+    ReloadBeforeRefreshResult result, {
+    DateTime? cooldownUntil,
+  }) {
+    lastResult = result;
   }
 }
 

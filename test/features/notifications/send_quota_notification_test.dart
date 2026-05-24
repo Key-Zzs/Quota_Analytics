@@ -11,9 +11,10 @@ void main() {
 
   test('permission granted -> send and stores lastSentAt', () async {
     final repository = _FakeNotificationRepository();
-    final sent = await SendQuotaNotification(
-      repository,
-    )(NotificationCandidate.staleData(), now: now);
+    final sent = await SendQuotaNotification(repository)(
+      NotificationCandidate.staleData(),
+      now: now,
+    );
 
     expect(sent, isTrue);
     expect(repository.sent.single.type, QuotaNotificationType.staleData);
@@ -27,9 +28,10 @@ void main() {
     final repository = _FakeNotificationRepository(
       permissionStatus: NotificationPermissionStatus.denied,
     );
-    final sent = await SendQuotaNotification(
-      repository,
-    )(NotificationCandidate.staleData(), now: now);
+    final sent = await SendQuotaNotification(repository)(
+      NotificationCandidate.staleData(),
+      now: now,
+    );
 
     expect(sent, isFalse);
     expect(repository.sent, isEmpty);
@@ -37,9 +39,10 @@ void main() {
 
   test('duplicate skipped by fake repository cooldown', () async {
     final repository = _FakeNotificationRepository();
-    await SendQuotaNotification(
-      repository,
-    )(NotificationCandidate.staleData(), now: now);
+    await SendQuotaNotification(repository)(
+      NotificationCandidate.staleData(),
+      now: now,
+    );
     final second = await SendQuotaNotification(repository)(
       NotificationCandidate.staleData(),
       now: now.add(const Duration(minutes: 5)),

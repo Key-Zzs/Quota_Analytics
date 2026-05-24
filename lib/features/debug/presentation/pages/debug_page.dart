@@ -150,6 +150,30 @@ class DebugPage extends StatelessWidget {
                   value: webAuthController.currentUrl,
                 ),
                 _DebugRow(
+                  label: 'Page title',
+                  value: webAuthController.pageTitle,
+                ),
+                _DebugRow(
+                  label: 'Page loading',
+                  value: webAuthController.isLoading.toString(),
+                ),
+                _DebugRow(
+                  label: 'Load progress',
+                  value: webAuthController.loadingProgress.toString(),
+                ),
+                _DebugRow(
+                  label: 'Last page started',
+                  value: formatDateTime(webAuthController.lastPageStartedAt),
+                ),
+                _DebugRow(
+                  label: 'Last page finished',
+                  value: formatDateTime(webAuthController.lastPageFinishedAt),
+                ),
+                _DebugRow(
+                  label: 'Last web resource error',
+                  value: webAuthController.lastWebResourceError ?? 'none',
+                ),
+                _DebugRow(
                   label: 'Last WebView error',
                   value: webAuthController.lastError ?? 'none',
                 ),
@@ -350,6 +374,20 @@ class DebugPage extends StatelessWidget {
                   label: 'Last saved snapshot id',
                   value: manualRefreshController.lastSavedSnapshotId ?? 'none',
                 ),
+                _DebugRow(
+                  label: 'reloadBeforeManualRefreshEnabled',
+                  value: settingsController.reloadBeforeManualRefreshEnabled
+                      .toString(),
+                ),
+                _DebugRow(
+                  label: 'Last reload summary',
+                  value:
+                      manualRefreshController
+                          .lastReloadBeforeRefreshResult
+                          ?.status
+                          .label ??
+                      'none',
+                ),
                 const _DebugRow(
                   label: 'Manual refresh background trigger',
                   value: 'disabled',
@@ -364,6 +402,12 @@ class DebugPage extends StatelessWidget {
                 _DebugRow(
                   label: 'Foreground auto refresh enabled',
                   value: autoRefreshController.state.enabled.toString(),
+                ),
+                _DebugRow(
+                  label: 'reloadBeforeForegroundAutoRefreshEnabled',
+                  value: settingsController
+                      .reloadBeforeForegroundAutoRefreshEnabled
+                      .toString(),
                 ),
                 _DebugRow(
                   label: 'Interval',
@@ -412,12 +456,48 @@ class DebugPage extends StatelessWidget {
                   label: 'WebView current sanitized URL',
                   value: webAuthController.currentUrl,
                 ),
+                _DebugRow(
+                  label: 'lastReloadStatus',
+                  value: webAuthController.lastReloadStatus,
+                ),
+                _DebugRow(
+                  label: 'lastReloadStartedAt',
+                  value: formatDateTime(webAuthController.lastReloadStartedAt),
+                ),
+                _DebugRow(
+                  label: 'lastReloadFinishedAt',
+                  value: formatDateTime(webAuthController.lastReloadFinishedAt),
+                ),
+                _DebugRow(
+                  label: 'lastReloadDuration',
+                  value: formatDuration(webAuthController.lastReloadDuration),
+                ),
+                _DebugRow(
+                  label: 'lastReloadError',
+                  value: webAuthController.lastReloadError ?? 'none',
+                ),
+                _DebugRow(
+                  label: 'lastReloadSanitizedUrl',
+                  value: webAuthController.lastReloadSanitizedUrl,
+                ),
+                _DebugRow(
+                  label: 'reloadCooldownUntil',
+                  value: formatDateTime(webAuthController.reloadCooldownUntil),
+                ),
+                const _DebugRow(label: 'pageSettleDelay', value: '800 ms'),
+                const _DebugRow(label: 'reloadTimeout', value: '15 seconds'),
                 const _DebugRow(
                   label: 'No background WebView refresh',
                   value: 'true',
                 ),
+                const _DebugRow(label: 'No background reload', value: 'true'),
+                const _DebugRow(label: 'No hidden WebView', value: 'true'),
                 const _DebugRow(
                   label: 'No cookie/token/storage access',
+                  value: 'true',
+                ),
+                const _DebugRow(
+                  label: 'No localStorage/sessionStorage access',
                   value: 'true',
                 ),
                 const _DebugRow(label: 'No HTML extraction', value: 'true'),

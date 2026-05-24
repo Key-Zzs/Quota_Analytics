@@ -42,9 +42,9 @@ void main() {
       mode: BackgroundRefreshMode.notifyOnly,
       checkInterval: BackgroundCheckInterval.oneHour,
       staleDataThreshold: BackgroundStaleThreshold.oneHour,
-      notificationSettings: BackgroundRefreshSettings.defaults(now)
-          .notificationSettings
-          .copyWith(localNotificationsEnabled: true),
+      notificationSettings: BackgroundRefreshSettings.defaults(
+        now,
+      ).notificationSettings.copyWith(localNotificationsEnabled: true),
     );
   }
 
@@ -71,8 +71,8 @@ void main() {
     final settings = notifySettings().copyWith(
       staleDataThreshold: BackgroundStaleThreshold.off,
       notificationSettings: notifySettings().notificationSettings.copyWith(
-            lowFiveHourQuotaThreshold: QuotaNotificationThreshold.below20,
-          ),
+        lowFiveHourQuotaThreshold: QuotaNotificationThreshold.below20,
+      ),
     );
     final background = _FakeBackgroundRepository(
       settings: settings,
@@ -95,8 +95,8 @@ void main() {
     final settings = notifySettings().copyWith(
       staleDataThreshold: BackgroundStaleThreshold.off,
       notificationSettings: notifySettings().notificationSettings.copyWith(
-            lowWeeklyQuotaThreshold: QuotaNotificationThreshold.below10,
-          ),
+        lowWeeklyQuotaThreshold: QuotaNotificationThreshold.below10,
+      ),
     );
     final background = _FakeBackgroundRepository(
       settings: settings,

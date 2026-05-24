@@ -37,8 +37,7 @@ class EvaluateBackgroundRefreshEligibility {
     if (!systemConstraintsSatisfied) {
       return BackgroundRefreshEligibility(
         status:
-            BackgroundRefreshEligibilityStatus
-                .skippedBatteryOrSystemConstraint,
+            BackgroundRefreshEligibilityStatus.skippedBatteryOrSystemConstraint,
         evaluatedAt: now,
         allowed: false,
         notifyOnly: false,
@@ -57,12 +56,15 @@ class EvaluateBackgroundRefreshEligibility {
         notifyOnly: false,
         warnings: warnings,
         errors: const [],
-        remainingCooldown: settings.minimumRunSpacing - now.difference(lastRunAt),
+        remainingCooldown:
+            settings.minimumRunSpacing - now.difference(lastRunAt),
       );
     }
 
     if (notificationPermissionStatus == NotificationPermissionStatus.denied) {
-      warnings.add('Notification permission is denied; local check can still run.');
+      warnings.add(
+        'Notification permission is denied; local check can still run.',
+      );
     } else if (notificationPermissionStatus ==
         NotificationPermissionStatus.unknown) {
       warnings.add('Notification permission status is unknown.');
@@ -85,9 +87,8 @@ class EvaluateBackgroundRefreshEligibility {
         'No background-safe data source is available; falling back to notify-only.',
       );
       return BackgroundRefreshEligibility(
-        status:
-            BackgroundRefreshEligibilityStatus
-                .skippedNoBackgroundSafeDataSource,
+        status: BackgroundRefreshEligibilityStatus
+            .skippedNoBackgroundSafeDataSource,
         evaluatedAt: now,
         allowed: true,
         notifyOnly: true,

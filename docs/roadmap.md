@@ -52,6 +52,14 @@ eligibility, notify-only fallback, local notifications, cooldown metadata, and
 Debug/Settings controls. Without an official API or background-safe datasource,
 background mode sends reminders only and never opens a hidden WebView.
 
+## Stage 8.1: Reload-Before-Refresh For Manual And Foreground Refresh
+
+Implemented optional foreground reload-before-refresh. Manual refresh can
+reload the current visible WebView page before extraction, and foreground auto
+refresh can do the same only while the app is resumed. Background refresh
+remains notify-only and does not call WebView reload, hidden WebViews, or
+JavaScript extraction.
+
 ## Stage 9: Android Home Screen Widget - Data Export Layer
 
 Export safe local snapshot summaries for Android widgets without WebView,
@@ -94,6 +102,7 @@ appropriate for this use case.
 - [x] Stage 6: Real manual refresh flow
 - [x] Stage 7: Foreground auto refresh + WebView layout fix
 - [x] Stage 8: Android background refresh and notifications
+- [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
 - [ ] Stage 9: Android home screen widget - data export layer
 - [ ] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration

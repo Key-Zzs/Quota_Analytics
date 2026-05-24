@@ -9,16 +9,17 @@ This is an unofficial independent project. It is not affiliated with, endorsed
 by, or maintained by OpenAI, ChatGPT, or Codex.
 
 Stage 8 adds Android background task infrastructure and local notifications,
-but background work is safety-gated. Without an official API or
-background-safe data source, background mode uses notify-only behavior based on
-the last saved local snapshot and refresh metadata. Real quota refresh still
-requires foreground WebView visible-text extraction. The app still does not
-read cookies, tokens, passwords, browser storage contents, local browser
-profiles, credentials, HTML, or an official quota API.
+but background work is safety-gated. Stage 8.1 adds optional foreground
+reload-before-refresh for manual and foreground auto refresh. Without an
+official API or background-safe data source, background mode uses notify-only
+behavior based on the last saved local snapshot and refresh metadata. Real
+quota refresh still requires foreground WebView visible-text extraction. The
+app still does not read cookies, tokens, passwords, browser storage contents,
+local browser profiles, credentials, HTML, or an official quota API.
 
 ## Current Status
 
-Stage 8: Android background refresh and notifications are complete.
+Stage 8.1: reload-before-refresh for manual and foreground refresh is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
@@ -36,6 +37,9 @@ Stage 8: Android background refresh and notifications are complete.
 - Extracted text is redacted before display and local storage.
 - Users can manually parse the current redacted visible text.
 - Users can manually refresh from the current WebView page in one flow.
+- Manual refresh can optionally reload the current foreground WebView page
+  before extraction. This is on by default because a user tap usually means the
+  latest rendered official page is desired.
 - Parser results include confidence, warnings, errors, matched signals, window
   fields, credits, and evidence labels.
 - Parser results are local and may be inaccurate.
@@ -46,16 +50,24 @@ Stage 8: Android background refresh and notifications are complete.
 - Foreground auto refresh is off by default, runs only while the app is
   resumed, uses the current already-open WebView page only, and reuses the
   manual refresh pipeline.
+- Foreground auto refresh can optionally reload the current foreground WebView
+  page before extraction. This is off by default because automatic page reloads
+  can increase login, reliability, battery, and rate-limit risk.
 - Android background refresh is safety-gated.
 - Without an official API or background-safe datasource, background mode uses
   notify-only behavior.
+- Background refresh remains notify-only and never uses hidden WebView
+  scraping.
 - Background checks read only app-owned local snapshot/settings/metadata.
 - Local notifications can remind the user when saved quota data is stale, quota
   is low, or the last refresh failed.
 - Notification cooldown metadata prevents repeated reminders.
 - No hidden background WebView scraping.
+- No hidden WebView.
 - No background cookie/token/storage access.
 - No background HTML or page text extraction.
+- No cookie/token/storage access for reload-before-refresh.
+- No HTML extraction.
 - No data upload.
 - WebView status shows sanitized URL, title, loading progress, navigation time,
   last error, and conservative auth status.
@@ -68,7 +80,8 @@ Stage 8: Android background refresh and notifications are complete.
 - Settings page with explicit save and clear-local-data.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
   Stage 5 parser, Stage 6 manual refresh, Stage 7 foreground auto refresh, and
-  Stage 8 background refresh/notification safety flags.
+  Stage 8 background refresh/notification safety flags, plus Stage 8.1 reload
+  status.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -93,6 +106,9 @@ Stage 8: Android background refresh and notifications are complete.
 - Parse result UI with confidence, warnings, errors, windows, credits, and
   evidence labels.
 - Manual refresh flow from the current WebView page.
+- Optional reload-before-manual-refresh for the current foreground WebView.
+- Optional reload-before-foreground-auto-refresh for the current foreground
+  WebView only.
 - Manual refresh policy for high/medium/low confidence saves.
 - Optional user-confirmed save for high/medium parsed snapshots.
 - Debug information page with storage diagnostics.
@@ -174,7 +190,8 @@ summarized in [docs/stage4_report.md](docs/stage4_report.md), Stage 5 is
 summarized in [docs/stage5_report.md](docs/stage5_report.md), Stage 6 is
 summarized in [docs/stage6_report.md](docs/stage6_report.md), and Stage 7 is
 summarized in [docs/stage7_report.md](docs/stage7_report.md). Stage 8 is
-summarized in [docs/stage8_report.md](docs/stage8_report.md).
+summarized in [docs/stage8_report.md](docs/stage8_report.md). Stage 8.1 is
+summarized in [docs/stage8_1_report.md](docs/stage8_1_report.md).
 
 ## Project Structure
 
@@ -196,7 +213,8 @@ summarized in [docs/stage8_report.md](docs/stage8_report.md).
 │   ├── stage5_report.md
 │   ├── stage6_report.md
 │   ├── stage7_report.md
-│   └── stage8_report.md
+│   ├── stage8_report.md
+│   └── stage8_1_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -255,6 +273,9 @@ flutter run
 
 - Stage 8 background work is notify-only unless a future background-safe data
   source is added.
+- Stage 8.1 reload-before-refresh is foreground only. It reloads only the
+  visible, current WebView page before the existing `document.body.innerText`
+  extraction pipeline.
 - Stage 7 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
 - Stage 8 persists mock quota data/settings, the last redacted extracted text

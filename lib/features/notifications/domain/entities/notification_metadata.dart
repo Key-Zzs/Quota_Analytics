@@ -42,10 +42,7 @@ class NotificationMetadata {
     required DateTime sentAt,
   }) {
     return NotificationMetadata(
-      lastSentAtByType: {
-        ...lastSentAtByType,
-        type: sentAt,
-      },
+      lastSentAtByType: {...lastSentAtByType, type: sentAt},
     );
   }
 

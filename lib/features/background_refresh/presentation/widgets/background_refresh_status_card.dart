@@ -6,10 +6,7 @@ import '../../../../core/utils/date_time_format.dart';
 import '../controllers/background_refresh_settings_controller.dart';
 
 class BackgroundRefreshStatusCard extends StatelessWidget {
-  const BackgroundRefreshStatusCard({
-    super.key,
-    required this.controller,
-  });
+  const BackgroundRefreshStatusCard({super.key, required this.controller});
 
   final BackgroundRefreshSettingsController controller;
 
@@ -37,9 +34,15 @@ class BackgroundRefreshStatusCard extends StatelessWidget {
             Text(
               'Background-safe data source available: ${controller.backgroundSafeDataSourceAvailable}',
             ),
-            Text('Last background run status: ${result?.status.label ?? 'none'}'),
-            Text('Last background run started: ${formatDateTime(result?.startedAt)}'),
-            Text('Last background run finished: ${formatDateTime(result?.finishedAt)}'),
+            Text(
+              'Last background run status: ${result?.status.label ?? 'none'}',
+            ),
+            Text(
+              'Last background run started: ${formatDateTime(result?.startedAt)}',
+            ),
+            Text(
+              'Last background run finished: ${formatDateTime(result?.finishedAt)}',
+            ),
             Text('Notifications sent: ${result?.notificationsSent ?? 0}'),
             const SizedBox(height: 8),
             const Text('No hidden WebView background extraction'),

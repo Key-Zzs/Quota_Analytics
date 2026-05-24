@@ -20,6 +20,8 @@ void main() {
 
     expect(settings.autoRefreshEnabled, isFalse);
     expect(settings.refreshInterval, RefreshInterval.off);
+    expect(settings.reloadBeforeManualRefreshEnabled, isTrue);
+    expect(settings.reloadBeforeForegroundAutoRefreshEnabled, isFalse);
   });
 
   test('saves and loads settings', () async {
@@ -32,12 +34,16 @@ void main() {
         refreshInterval: RefreshInterval.thirtyMinutes,
         manualRefreshPolicy: ManualRefreshPolicy.defaults(),
         updatedAt: DateTime.utc(2026, 1, 1),
+        reloadBeforeManualRefreshEnabled: false,
+        reloadBeforeForegroundAutoRefreshEnabled: true,
       ),
     );
     final loaded = await repository.getSettings();
 
     expect(loaded.autoRefreshEnabled, isTrue);
     expect(loaded.refreshInterval, RefreshInterval.thirtyMinutes);
+    expect(loaded.reloadBeforeManualRefreshEnabled, isFalse);
+    expect(loaded.reloadBeforeForegroundAutoRefreshEnabled, isTrue);
     expect(loaded.updatedAt, DateTime.utc(2026, 1, 1, 9));
   });
 
@@ -82,6 +88,8 @@ void main() {
     final loaded = await repository.getSettings();
     expect(loaded.autoRefreshEnabled, isFalse);
     expect(loaded.refreshInterval, RefreshInterval.off);
+    expect(loaded.reloadBeforeManualRefreshEnabled, isTrue);
+    expect(loaded.reloadBeforeForegroundAutoRefreshEnabled, isFalse);
   });
 
   test('corrupted settings JSON falls back without crashing', () async {

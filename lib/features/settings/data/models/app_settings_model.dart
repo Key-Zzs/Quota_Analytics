@@ -9,6 +9,8 @@ class AppSettingsModel extends AppSettings {
     required super.refreshInterval,
     required super.manualRefreshPolicy,
     required super.updatedAt,
+    super.reloadBeforeManualRefreshEnabled,
+    super.reloadBeforeForegroundAutoRefreshEnabled,
   });
 
   factory AppSettingsModel.fromEntity(AppSettings settings) {
@@ -17,6 +19,10 @@ class AppSettingsModel extends AppSettings {
       refreshInterval: settings.refreshInterval,
       manualRefreshPolicy: settings.manualRefreshPolicy,
       updatedAt: settings.updatedAt,
+      reloadBeforeManualRefreshEnabled:
+          settings.reloadBeforeManualRefreshEnabled,
+      reloadBeforeForegroundAutoRefreshEnabled:
+          settings.reloadBeforeForegroundAutoRefreshEnabled,
     );
   }
 
@@ -39,6 +45,10 @@ class AppSettingsModel extends AppSettings {
         json['manualRefreshPolicy'],
       ),
       updatedAt: dateTimeFromIso8601(json['updatedAt']) ?? fallbackUpdatedAt,
+      reloadBeforeManualRefreshEnabled:
+          _readBool(json['reloadBeforeManualRefreshEnabled']) ?? true,
+      reloadBeforeForegroundAutoRefreshEnabled:
+          _readBool(json['reloadBeforeForegroundAutoRefreshEnabled']) ?? false,
     );
   }
 
@@ -52,6 +62,9 @@ class AppSettingsModel extends AppSettings {
             manualRefreshPolicy.requireConfirmationForMediumConfidence,
         'allowLowConfidenceSave': manualRefreshPolicy.allowLowConfidenceSave,
       },
+      'reloadBeforeManualRefreshEnabled': reloadBeforeManualRefreshEnabled,
+      'reloadBeforeForegroundAutoRefreshEnabled':
+          reloadBeforeForegroundAutoRefreshEnabled,
       'updatedAt': dateTimeToIso8601(updatedAt),
     };
   }

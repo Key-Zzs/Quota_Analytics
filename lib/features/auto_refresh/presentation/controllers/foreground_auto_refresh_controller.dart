@@ -6,9 +6,13 @@ import '../../../../core/security/sensitive_data_policy.dart';
 import '../../../../core/time/clock.dart';
 import '../../../auth/presentation/controllers/webview_auth_controller.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
+import '../../../refresh/data/services/page_load_waiter.dart';
 import '../../../refresh/domain/entities/manual_refresh_page_state.dart';
 import '../../../refresh/domain/entities/manual_refresh_result.dart';
 import '../../../refresh/domain/entities/manual_refresh_status.dart';
+import '../../../refresh/domain/entities/reload_before_refresh_result.dart';
+import '../../../refresh/domain/entities/reload_before_refresh_policy.dart';
+import '../../../refresh/domain/usecases/reload_page_before_refresh.dart';
 import '../../../refresh/presentation/controllers/manual_refresh_controller.dart';
 import '../../../settings/presentation/controllers/settings_controller.dart';
 import '../../domain/entities/auto_refresh_eligibility.dart';
@@ -51,6 +55,9 @@ class ForegroundAutoRefreshController extends ChangeNotifier
     required SettingsController settingsController,
     required WebViewAuthController webAuthController,
     required ManualRefreshController manualRefreshController,
+    ReloadPageBeforeRefreshUseCase? reloadPageBeforeRefresh,
+    ReloadBeforeRefreshPolicy Function()?
+    reloadBeforeForegroundAutoRefreshPolicyProvider,
     required EvaluateAutoRefreshEligibility evaluateEligibility,
     required RunForegroundAutoRefresh runForegroundAutoRefresh,
     required AutoRefreshPolicy policy,
@@ -62,6 +69,9 @@ class ForegroundAutoRefreshController extends ChangeNotifier
   }) : _settingsController = settingsController,
        _webAuthController = webAuthController,
        _manualRefreshController = manualRefreshController,
+       _reloadPageBeforeRefresh = reloadPageBeforeRefresh,
+       _reloadBeforeForegroundAutoRefreshPolicyProvider =
+           reloadBeforeForegroundAutoRefreshPolicyProvider,
        _evaluateEligibility = evaluateEligibility,
        _runForegroundAutoRefresh = runForegroundAutoRefresh,
        _policy = policy,
@@ -85,6 +95,9 @@ class ForegroundAutoRefreshController extends ChangeNotifier
   final SettingsController _settingsController;
   final WebViewAuthController _webAuthController;
   final ManualRefreshController _manualRefreshController;
+  final ReloadPageBeforeRefreshUseCase? _reloadPageBeforeRefresh;
+  final ReloadBeforeRefreshPolicy Function()?
+  _reloadBeforeForegroundAutoRefreshPolicyProvider;
   final EvaluateAutoRefreshEligibility _evaluateEligibility;
   final RunForegroundAutoRefresh _runForegroundAutoRefresh;
   final AutoRefreshPolicy _policy;
@@ -96,6 +109,7 @@ class ForegroundAutoRefreshController extends ChangeNotifier
   AppLifecycleState _lifecycleState;
   bool _isCheckingOrRefreshing = false;
   bool _registeredLifecycleObserver = false;
+  ReloadCancellationToken? _activeReloadCancellation;
 
   AutoRefreshState get state => _state;
   AppLifecycleState get lifecycleState => _lifecycleState;
@@ -113,6 +127,7 @@ class ForegroundAutoRefreshController extends ChangeNotifier
       return;
     }
 
+    _activeReloadCancellation?.cancel();
     _scheduler.stop();
     _state = _state.copyWith(
       status: _state.enabled
@@ -169,6 +184,53 @@ class ForegroundAutoRefreshController extends ChangeNotifier
     notifyListeners();
 
     try {
+      final reloadPolicy =
+          _reloadBeforeForegroundAutoRefreshPolicyProvider?.call() ??
+          _settingsController.foregroundAutoReloadBeforeRefreshPolicy;
+      final reloadUseCase = _reloadPageBeforeRefresh;
+      if (reloadUseCase != null && reloadPolicy.enabled) {
+        final cancellation = ReloadCancellationToken();
+        _activeReloadCancellation = cancellation;
+        final reloadResult = await reloadUseCase(
+          policy: reloadPolicy,
+          isRefreshInProgress: _manualRefreshController.isBusy,
+          cancellationSignal: cancellation,
+        );
+        _activeReloadCancellation = null;
+        if (!reloadResult.allowsExtraction) {
+          final failedAt = reloadResult.finishedAt ?? _clock.now();
+          final status = isForeground
+              ? AutoRefreshStatus.failed
+              : AutoRefreshStatus.skippedNotForeground;
+          _state = _state.copyWith(
+            status: status,
+            cooldownUntil: status == AutoRefreshStatus.failed
+                ? _policy.cooldownUntil(failedAt)
+                : null,
+            nextEligibleAt: status == AutoRefreshStatus.failed
+                ? _policy.cooldownUntil(failedAt)
+                : _state.nextEligibleAt,
+            lastError: _errorForReloadResult(reloadResult),
+            isRefreshInProgress: false,
+          );
+          return;
+        }
+        if (!isForeground) {
+          _state = _state.copyWith(
+            status: AutoRefreshStatus.skippedNotForeground,
+            nextEligibleAt: _policy.nextEligibleAt(
+              lastSuccessAt: _state.lastSuccessAt,
+              interval: _state.interval,
+            ),
+            lastError:
+                'Foreground auto refresh cancelled before extraction because the app left foreground.',
+            isRefreshInProgress: false,
+          );
+          _activeReloadCancellation = null;
+          return;
+        }
+      }
+
       final result = await _runForegroundAutoRefresh(
         ManualRefreshPageState(
           currentUrl: _webAuthController.currentUrl,
@@ -217,6 +279,7 @@ class ForegroundAutoRefreshController extends ChangeNotifier
         isRefreshInProgress: false,
       );
     } finally {
+      _activeReloadCancellation = null;
       _isCheckingOrRefreshing = false;
       _syncTimerWithLifecycle();
       notifyListeners();
@@ -291,6 +354,14 @@ class ForegroundAutoRefreshController extends ChangeNotifier
     final errors = manualResult.errors;
     if (errors.isEmpty) {
       return 'Foreground auto refresh did not produce a savable candidate.';
+    }
+    return SensitiveDataPolicy.sanitizeLogText(errors.join(' | '));
+  }
+
+  String _errorForReloadResult(ReloadBeforeRefreshResult reloadResult) {
+    final errors = reloadResult.errors;
+    if (errors.isEmpty) {
+      return 'Reload before foreground auto refresh stopped: ${reloadResult.status.label}.';
     }
     return SensitiveDataPolicy.sanitizeLogText(errors.join(' | '));
   }

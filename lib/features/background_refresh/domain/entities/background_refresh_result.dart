@@ -29,7 +29,9 @@ class BackgroundRefreshResult {
         dateTimeFromIso8601(json['startedAt']) ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     return BackgroundRefreshResult(
-      status: backgroundRefreshStatusFromStorageKey(_readString(json['status'])),
+      status: backgroundRefreshStatusFromStorageKey(
+        _readString(json['status']),
+      ),
       startedAt: startedAt,
       finishedAt: dateTimeFromIso8601(json['finishedAt']),
       warnings: _readStringList(json['warnings']),

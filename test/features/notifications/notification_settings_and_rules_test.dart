@@ -127,7 +127,10 @@ void main() {
     expect(NotificationCandidate.refreshFailed().hasSafeContent, isTrue);
     expect(isSafeNotificationText('token=abc123'), isFalse);
     expect(isSafeNotificationText('person@example.com'), isFalse);
-    expect(isSafeNotificationText('https://example.com/?token=secret'), isFalse);
+    expect(
+      isSafeNotificationText('https://example.com/?token=secret'),
+      isFalse,
+    );
   });
 }
 

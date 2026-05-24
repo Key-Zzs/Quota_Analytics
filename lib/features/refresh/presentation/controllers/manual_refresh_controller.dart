@@ -2,14 +2,21 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../core/security/sensitive_data_policy.dart';
 import '../../../../core/time/clock.dart';
+import '../../data/services/page_load_waiter.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../domain/entities/manual_refresh_page_state.dart';
 import '../../domain/entities/manual_refresh_policy.dart';
 import '../../domain/entities/manual_refresh_result.dart';
 import '../../domain/entities/manual_refresh_status.dart';
+import '../../domain/entities/reload_before_refresh_policy.dart';
+import '../../domain/entities/reload_before_refresh_result.dart';
+import '../../domain/entities/reload_before_refresh_status.dart';
 import '../../domain/repositories/manual_refresh_repository.dart';
+import '../../domain/usecases/reload_page_before_refresh.dart';
 import '../../domain/usecases/refresh_quota_from_webview.dart';
 import '../../domain/usecases/save_manual_refresh_snapshot.dart';
+
+typedef ManualRefreshPageStateProvider = ManualRefreshPageState Function();
 
 class ManualRefreshController extends ChangeNotifier {
   ManualRefreshController({
@@ -17,11 +24,19 @@ class ManualRefreshController extends ChangeNotifier {
     required SaveManualRefreshSnapshot saveManualRefreshSnapshot,
     required ManualRefreshRepository manualRefreshRepository,
     required ManualRefreshPolicy Function() policyProvider,
+    ReloadPageBeforeRefreshUseCase? reloadPageBeforeRefresh,
+    ReloadBeforeRefreshPolicy Function()?
+    reloadBeforeManualRefreshPolicyProvider,
+    ManualRefreshPageStateProvider? currentPageStateProvider,
     Clock clock = const SystemClock(),
   }) : _refreshQuotaFromWebView = refreshQuotaFromWebView,
        _saveManualRefreshSnapshot = saveManualRefreshSnapshot,
        _manualRefreshRepository = manualRefreshRepository,
        _policyProvider = policyProvider,
+       _reloadPageBeforeRefresh = reloadPageBeforeRefresh,
+       _reloadBeforeManualRefreshPolicyProvider =
+           reloadBeforeManualRefreshPolicyProvider,
+       _currentPageStateProvider = currentPageStateProvider,
        _clock = clock,
        _lastResult = ManualRefreshResult.idle(clock.now());
 
@@ -29,6 +44,10 @@ class ManualRefreshController extends ChangeNotifier {
   final SaveManualRefreshSnapshot _saveManualRefreshSnapshot;
   final ManualRefreshRepository _manualRefreshRepository;
   final ManualRefreshPolicy Function() _policyProvider;
+  final ReloadPageBeforeRefreshUseCase? _reloadPageBeforeRefresh;
+  final ReloadBeforeRefreshPolicy Function()?
+  _reloadBeforeManualRefreshPolicyProvider;
+  final ManualRefreshPageStateProvider? _currentPageStateProvider;
   final Clock _clock;
 
   ManualRefreshResult _lastResult;
@@ -46,6 +65,13 @@ class ManualRefreshController extends ChangeNotifier {
   String? get lastError => _lastError;
   String? get lastSavedSnapshotId => _lastResult.savedSnapshotId;
   ManualRefreshPolicy get policy => _policyProvider();
+  ReloadBeforeRefreshPolicy get reloadBeforeManualRefreshPolicy =>
+      _reloadBeforeManualRefreshPolicyProvider?.call() ??
+      ReloadBeforeRefreshPolicy.manualDefault(enabled: false);
+  ReloadBeforeRefreshResult? get lastReloadBeforeRefreshResult {
+    return _lastResult.reloadBeforeRefreshResult ??
+        _reloadPageBeforeRefresh?.lastResult;
+  }
 
   bool get canSaveCandidate {
     return !_isRefreshing &&
@@ -68,8 +94,10 @@ class ManualRefreshController extends ChangeNotifier {
   }
 
   Future<QuotaSnapshot?> refreshFromCurrentPage(
-    ManualRefreshPageState pageState,
-  ) async {
+    ManualRefreshPageState pageState, {
+    bool reloadBeforeRefresh = true,
+    ReloadCancellationSignal? reloadCancellationSignal,
+  }) async {
     if (_isRefreshing || _isSaving) {
       return null;
     }
@@ -80,9 +108,36 @@ class ManualRefreshController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      ReloadBeforeRefreshResult? reloadResult;
+      var effectivePageState = pageState;
+      final reloadPolicy = reloadBeforeManualRefreshPolicy;
+      final reloadUseCase = _reloadPageBeforeRefresh;
+      if (reloadBeforeRefresh &&
+          reloadUseCase != null &&
+          reloadPolicy.enabled) {
+        reloadResult = await reloadUseCase(
+          policy: reloadPolicy,
+          isRefreshInProgress: _isSaving,
+          cancellationSignal: reloadCancellationSignal,
+          onProgress: (progress) {
+            _lastResult = _resultForReloadProgress(progress);
+            notifyListeners();
+          },
+        );
+        if (!reloadResult.allowsExtraction) {
+          final result = await _saveReloadBlockedResult(reloadResult);
+          _lastResult = result;
+          _message = _messageForResult(result);
+          _lastError = result.errors.isEmpty ? null : result.errors.join(' | ');
+          return null;
+        }
+        effectivePageState = _currentPageStateProvider?.call() ?? pageState;
+      }
+
       final result = await _refreshQuotaFromWebView(
-        pageState: pageState,
+        pageState: effectivePageState,
         policy: policy,
+        reloadBeforeRefreshResult: reloadResult,
         onProgress: (progress) {
           _lastResult = progress;
           notifyListeners();
@@ -108,6 +163,7 @@ class ManualRefreshController extends ChangeNotifier {
         startedAt: _lastResult.startedAt,
         finishedAt: _clock.now(),
         savedSnapshotId: _lastResult.savedSnapshotId,
+        reloadBeforeRefreshResult: _lastResult.reloadBeforeRefreshResult,
       );
       return null;
     } finally {
@@ -180,6 +236,64 @@ class ManualRefreshController extends ChangeNotifier {
       ManualRefreshStatus.lowConfidence =>
         'Low confidence results are not saved.',
       ManualRefreshStatus.failed => 'Manual refresh failed.',
+    };
+  }
+
+  ManualRefreshResult _resultForReloadProgress(
+    ReloadBeforeRefreshResult reloadResult,
+  ) {
+    return ManualRefreshResult(
+      status: reloadResult.status.isTerminal
+          ? _statusForReloadResult(reloadResult)
+          : ManualRefreshStatus.checkingPage,
+      safetyStatus: _lastResult.safetyStatus,
+      parserConfidence: _lastResult.parserConfidence,
+      extractedPageText: _lastResult.extractedPageText,
+      parseResult: _lastResult.parseResult,
+      snapshotCandidate: _lastResult.snapshotCandidate,
+      redactionSummary: _lastResult.redactionSummary,
+      warnings: reloadResult.warnings,
+      errors: reloadResult.errors,
+      startedAt: reloadResult.startedAt,
+      finishedAt: reloadResult.finishedAt,
+      savedSnapshotId: _lastResult.savedSnapshotId,
+      reloadBeforeRefreshResult: reloadResult,
+    );
+  }
+
+  Future<ManualRefreshResult> _saveReloadBlockedResult(
+    ReloadBeforeRefreshResult reloadResult,
+  ) {
+    final errors = reloadResult.errors.isEmpty
+        ? ['Reload before refresh stopped: ${reloadResult.status.label}.']
+        : reloadResult.errors;
+    return _manualRefreshRepository.saveLastResult(
+      ManualRefreshResult(
+        status: _statusForReloadResult(reloadResult),
+        safetyStatus: _lastResult.safetyStatus,
+        parserConfidence: _lastResult.parserConfidence,
+        extractedPageText: null,
+        parseResult: null,
+        snapshotCandidate: null,
+        redactionSummary: null,
+        warnings: reloadResult.warnings,
+        errors: errors,
+        startedAt: reloadResult.startedAt,
+        finishedAt: reloadResult.finishedAt ?? _clock.now(),
+        savedSnapshotId: null,
+        reloadBeforeRefreshResult: reloadResult,
+      ),
+    );
+  }
+
+  ManualRefreshStatus _statusForReloadResult(
+    ReloadBeforeRefreshResult reloadResult,
+  ) {
+    return switch (reloadResult.status) {
+      ReloadBeforeRefreshStatus.timeout ||
+      ReloadBeforeRefreshStatus.failed ||
+      ReloadBeforeRefreshStatus.cancelled => ManualRefreshStatus.failed,
+      _ => ManualRefreshStatus.blocked,
     };
   }
 }

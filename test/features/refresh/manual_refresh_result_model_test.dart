@@ -11,6 +11,8 @@ import 'package:quota_analytics/features/quota/domain/entities/parser_confidence
 import 'package:quota_analytics/features/refresh/data/models/manual_refresh_result_model.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_result.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_status.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_result.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_status.dart';
 
 void main() {
   test('JSON round trip keeps duration warnings and errors', () {
@@ -41,6 +43,14 @@ void main() {
       startedAt: startedAt,
       finishedAt: finishedAt,
       savedSnapshotId: null,
+      reloadBeforeRefreshResult: ReloadBeforeRefreshResult(
+        status: ReloadBeforeRefreshStatus.completed,
+        startedAt: startedAt,
+        finishedAt: startedAt.add(const Duration(milliseconds: 900)),
+        sanitizedUrl: 'https://chatgpt.com/codex/cloud/settings/analytics',
+        warnings: const [],
+        errors: const [],
+      ),
     );
 
     final json = ManualRefreshResultModel.fromEntity(result).toJson();
@@ -53,6 +63,10 @@ void main() {
     expect(loaded.redactionSummary?.redactedEmailCount, 1);
     expect(loaded.snapshotCandidate?.id, snapshot.id);
     expect(loaded.parseResult?.windows.single.type, QuotaWindowType.fiveHour);
+    expect(
+      loaded.reloadBeforeRefreshResult?.status,
+      ReloadBeforeRefreshStatus.completed,
+    );
   });
 }
 

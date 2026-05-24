@@ -54,6 +54,10 @@ class WebViewSafetyNotice extends StatelessWidget {
                 style: TextStyle(color: colorScheme.onSecondaryContainer),
               ),
               Text(
+                'Reload-before-refresh is foreground only and never runs in Android background tasks.',
+                style: TextStyle(color: colorScheme.onSecondaryContainer),
+              ),
+              Text(
                 'Extracted text is redacted and kept local for debugging.',
                 style: TextStyle(color: colorScheme.onSecondaryContainer),
               ),

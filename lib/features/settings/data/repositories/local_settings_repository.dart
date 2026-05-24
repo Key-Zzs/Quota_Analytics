@@ -38,6 +38,10 @@ class LocalSettingsRepository implements SettingsRepository {
         refreshInterval: RefreshInterval.off,
         manualRefreshPolicy: settings.manualRefreshPolicy,
         updatedAt: updatedAt,
+        reloadBeforeManualRefreshEnabled:
+            settings.reloadBeforeManualRefreshEnabled,
+        reloadBeforeForegroundAutoRefreshEnabled:
+            settings.reloadBeforeForegroundAutoRefreshEnabled,
       );
     }
 
@@ -48,6 +52,10 @@ class LocalSettingsRepository implements SettingsRepository {
           : settings.refreshInterval,
       manualRefreshPolicy: settings.manualRefreshPolicy,
       updatedAt: updatedAt,
+      reloadBeforeManualRefreshEnabled:
+          settings.reloadBeforeManualRefreshEnabled,
+      reloadBeforeForegroundAutoRefreshEnabled:
+          settings.reloadBeforeForegroundAutoRefreshEnabled,
     );
   }
 }

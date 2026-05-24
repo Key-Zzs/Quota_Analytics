@@ -15,10 +15,12 @@ class ForegroundAutoRefreshRepository implements AutoRefreshRepository {
 
   @override
   Future<AutoRefreshResult> refreshCurrentPage(
-    ManualRefreshPageState pageState,
-  ) async {
+    ManualRefreshPageState pageState, {
+    bool reloadBeforeRefresh = false,
+  }) async {
     final savedSnapshot = await manualRefreshController.refreshFromCurrentPage(
       pageState,
+      reloadBeforeRefresh: reloadBeforeRefresh,
     );
     return AutoRefreshResult(
       manualRefreshResult: manualRefreshController.lastResult,

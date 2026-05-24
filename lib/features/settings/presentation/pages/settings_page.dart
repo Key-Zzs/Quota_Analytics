@@ -70,6 +70,28 @@ class SettingsPage extends StatelessWidget {
                       ],
                     ),
                   ),
+                  SwitchListTile(
+                    title: const Text(
+                      'Reload page before foreground auto refresh',
+                    ),
+                    subtitle: const Text(
+                      'Only works while the app is in the foreground. Does not run in Android background tasks. May trigger login or page loading issues if used too frequently.',
+                    ),
+                    value: controller.reloadBeforeForegroundAutoRefreshEnabled,
+                    onChanged: controller.isSaving
+                        ? null
+                        : controller
+                              .setReloadBeforeForegroundAutoRefreshEnabled,
+                  ),
+                  if (controller.refreshInterval.duration != null &&
+                      controller.refreshInterval.duration! <=
+                          const Duration(minutes: 5))
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Text(
+                        'Frequent reloads may be unreliable. 15+ minutes is recommended.',
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: SizedBox(
@@ -105,6 +127,16 @@ class SettingsPage extends StatelessWidget {
             Card(
               child: Column(
                 children: [
+                  SwitchListTile(
+                    title: const Text('Reload page before manual refresh'),
+                    subtitle: const Text(
+                      'On by default because a manual tap usually means you want the newest rendered analytics page.',
+                    ),
+                    value: controller.reloadBeforeManualRefreshEnabled,
+                    onChanged: controller.isSaving
+                        ? null
+                        : controller.setReloadBeforeManualRefreshEnabled,
+                  ),
                   SwitchListTile(
                     title: const Text(
                       'Auto-save high confidence manual refresh',
@@ -157,6 +189,12 @@ class SettingsPage extends StatelessWidget {
                       'Auto refresh: ${controller.autoRefreshEnabled ? 'On' : 'Off'}',
                     ),
                     Text('Interval: ${controller.refreshInterval.label}'),
+                    Text(
+                      'Reload before manual refresh: ${controller.reloadBeforeManualRefreshEnabled ? 'On' : 'Off'}',
+                    ),
+                    Text(
+                      'Reload before foreground auto refresh: ${controller.reloadBeforeForegroundAutoRefreshEnabled ? 'On' : 'Off'}',
+                    ),
                     Text(
                       'Manual refresh auto-save high confidence: ${controller.autoSaveHighConfidenceManualRefresh ? 'On' : 'Off'}',
                     ),

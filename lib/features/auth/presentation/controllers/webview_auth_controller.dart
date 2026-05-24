@@ -28,10 +28,22 @@ class WebViewAuthController extends ChangeNotifier {
   bool _canGoBack = false;
   bool _canGoForward = false;
   DateTime? _lastNavigationTime;
+  DateTime? _lastPageStartedAt;
+  DateTime? _lastPageFinishedAt;
   DateTime? _lastDataClearTime;
   String? _lastError;
+  DateTime? _lastWebResourceErrorAt;
+  String? _lastWebResourceError;
   String? _message;
   WebViewClearResult? _lastClearResult;
+  DateTime? _lastReloadAt;
+  DateTime? _lastReloadStartedAt;
+  DateTime? _lastReloadFinishedAt;
+  Duration? _lastReloadDuration;
+  String _lastReloadStatus = 'idle';
+  String? _lastReloadError;
+  String _lastReloadSanitizedUrl = 'none';
+  DateTime? _reloadCooldownUntil;
 
   WebAuthStatus get authStatus => _authStatus;
   String get currentUrl => _currentUrl;
@@ -41,10 +53,22 @@ class WebViewAuthController extends ChangeNotifier {
   bool get canGoBack => _canGoBack;
   bool get canGoForward => _canGoForward;
   DateTime? get lastNavigationTime => _lastNavigationTime;
+  DateTime? get lastPageStartedAt => _lastPageStartedAt;
+  DateTime? get lastPageFinishedAt => _lastPageFinishedAt;
   DateTime? get lastDataClearTime => _lastDataClearTime;
   String? get lastError => _lastError;
+  DateTime? get lastWebResourceErrorAt => _lastWebResourceErrorAt;
+  String? get lastWebResourceError => _lastWebResourceError;
   String? get message => _message;
   WebViewClearResult? get lastClearResult => _lastClearResult;
+  DateTime? get lastReloadAt => _lastReloadAt;
+  DateTime? get lastReloadStartedAt => _lastReloadStartedAt;
+  DateTime? get lastReloadFinishedAt => _lastReloadFinishedAt;
+  Duration? get lastReloadDuration => _lastReloadDuration;
+  String get lastReloadStatus => _lastReloadStatus;
+  String? get lastReloadError => _lastReloadError;
+  String get lastReloadSanitizedUrl => _lastReloadSanitizedUrl;
+  DateTime? get reloadCooldownUntil => _reloadCooldownUntil;
   bool get isReady => _repository != null;
 
   void attachRepository(WebAuthRepository repository) {
@@ -62,6 +86,16 @@ class WebViewAuthController extends ChangeNotifier {
 
   Future<void> reload() {
     return _runWithRepository((repository) async {
+      await repository.reload();
+      await _refreshNavigationAvailability(notify: false);
+    });
+  }
+
+  Future<void> reloadForRefresh() {
+    return _runWithRepositoryThrowing((repository) async {
+      _lastError = null;
+      _message = null;
+      notifyListeners();
       await repository.reload();
       await _refreshNavigationAvailability(notify: false);
     });
@@ -100,15 +134,21 @@ class WebViewAuthController extends ChangeNotifier {
     );
     _isLoading = true;
     _loadingProgress = 0;
-    _lastNavigationTime = _clock.now();
+    final now = _clock.now();
+    _lastNavigationTime = now;
+    _lastPageStartedAt = now;
     _lastError = null;
+    _lastWebResourceError = null;
+    _lastWebResourceErrorAt = null;
     _message = null;
     notifyListeners();
   }
 
   void onProgress(int progress) {
     _loadingProgress = progress.clamp(0, 100);
-    _isLoading = _loadingProgress < 100;
+    if (_loadingProgress < 100) {
+      _isLoading = true;
+    }
     notifyListeners();
   }
 
@@ -123,7 +163,9 @@ class WebViewAuthController extends ChangeNotifier {
     );
     _isLoading = false;
     _loadingProgress = 100;
-    _lastNavigationTime = _clock.now();
+    final now = _clock.now();
+    _lastNavigationTime = now;
+    _lastPageFinishedAt = now;
     await _refreshNavigationAvailability(notify: false);
     notifyListeners();
   }
@@ -141,7 +183,10 @@ class WebViewAuthController extends ChangeNotifier {
   void onWebResourceError(WebAuthNavigationError error) {
     _authStatus = WebAuthStatus.error;
     _isLoading = false;
-    _lastError = error.safeMessage;
+    final safeMessage = error.safeMessage;
+    _lastError = safeMessage;
+    _lastWebResourceError = safeMessage;
+    _lastWebResourceErrorAt = _clock.now();
     _message = null;
     notifyListeners();
   }
@@ -152,6 +197,41 @@ class WebViewAuthController extends ChangeNotifier {
     _isLoading = false;
     _lastError = SensitiveDataPolicy.sanitizeLogText(reason);
     _lastNavigationTime = _clock.now();
+    notifyListeners();
+  }
+
+  void recordReloadStarted(DateTime startedAt) {
+    _lastReloadAt = startedAt;
+    _lastReloadStartedAt = startedAt;
+    _lastReloadFinishedAt = null;
+    _lastReloadDuration = null;
+    _lastReloadStatus = 'reloading';
+    _lastReloadError = null;
+    _lastReloadSanitizedUrl = _currentUrl;
+    notifyListeners();
+  }
+
+  void recordReloadResult({
+    required String statusLabel,
+    required DateTime startedAt,
+    required DateTime? finishedAt,
+    required Duration? duration,
+    required String sanitizedUrl,
+    required String? error,
+    required DateTime? cooldownUntil,
+  }) {
+    _lastReloadAt = startedAt;
+    _lastReloadStartedAt = startedAt;
+    _lastReloadFinishedAt = finishedAt;
+    _lastReloadDuration = duration;
+    _lastReloadStatus = SensitiveDataPolicy.sanitizeLogText(statusLabel);
+    _lastReloadError = error == null
+        ? null
+        : SensitiveDataPolicy.sanitizeLogText(error);
+    _lastReloadSanitizedUrl = sanitizedUrl == 'none'
+        ? 'none'
+        : SensitiveDataPolicy.sanitizeUrlForDisplay(sanitizedUrl);
+    _reloadCooldownUntil = cooldownUntil;
     notifyListeners();
   }
 
@@ -188,6 +268,30 @@ class WebViewAuthController extends ChangeNotifier {
       _authStatus = WebAuthStatus.error;
       _isLoading = false;
       _lastError = SensitiveDataPolicy.sanitizeLogText(error.toString());
+    }
+    notifyListeners();
+  }
+
+  Future<void> _runWithRepositoryThrowing(
+    Future<void> Function(WebAuthRepository repository) action,
+  ) async {
+    final repository = _repository;
+    if (repository == null) {
+      _authStatus = WebAuthStatus.error;
+      _lastError = 'WebView controller is not ready.';
+      notifyListeners();
+      throw StateError(_lastError!);
+    }
+
+    try {
+      await action(repository);
+    } catch (error) {
+      final safeError = SensitiveDataPolicy.sanitizeLogText(error.toString());
+      _authStatus = WebAuthStatus.error;
+      _isLoading = false;
+      _lastError = safeError;
+      notifyListeners();
+      throw StateError(safeError);
     }
     notifyListeners();
   }

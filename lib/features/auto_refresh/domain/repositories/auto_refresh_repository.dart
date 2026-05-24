@@ -5,6 +5,7 @@ abstract class AutoRefreshRepository {
   bool get isRefreshInProgress;
 
   Future<AutoRefreshResult> refreshCurrentPage(
-    ManualRefreshPageState pageState,
-  );
+    ManualRefreshPageState pageState, {
+    bool reloadBeforeRefresh = false,
+  });
 }

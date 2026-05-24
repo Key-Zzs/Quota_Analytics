@@ -27,8 +27,9 @@ class BackgroundRefreshSettingsController extends ChangeNotifier {
   }) : _backgroundRepository = backgroundRepository,
        _notificationRepository = notificationRepository,
        _runBackgroundRefreshCheck = runBackgroundRefreshCheck,
-       _scheduleBackgroundRefresh =
-           ScheduleBackgroundRefresh(backgroundRepository),
+       _scheduleBackgroundRefresh = ScheduleBackgroundRefresh(
+         backgroundRepository,
+       ),
        _cancelBackgroundRefresh = CancelBackgroundRefresh(backgroundRepository),
        _clock = clock;
 
@@ -73,8 +74,8 @@ class BackgroundRefreshSettingsController extends ChangeNotifier {
       _lastResult = await _backgroundRepository.getLastResult();
       _notificationMetadata = await _notificationRepository.getMetadata();
       _permissionStatus = await _notificationRepository.getPermissionStatus();
-      _backgroundSafeDataSourceAvailable =
-          await _backgroundRepository.hasBackgroundSafeDataSource();
+      _backgroundSafeDataSourceAvailable = await _backgroundRepository
+          .hasBackgroundSafeDataSource();
       _status = BackgroundRefreshSettingsStatus.ready;
     } on Object catch (error) {
       _status = BackgroundRefreshSettingsStatus.error;
@@ -141,8 +142,7 @@ class BackgroundRefreshSettingsController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      _permissionStatus =
-          await _notificationRepository.requestPermission();
+      _permissionStatus = await _notificationRepository.requestPermission();
       _status = BackgroundRefreshSettingsStatus.ready;
       _message = 'Notification permission ${_permissionStatus.label}';
     } on Object catch (error) {

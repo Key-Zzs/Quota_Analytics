@@ -10,10 +10,7 @@ import '../../domain/entities/background_refresh_mode.dart';
 import '../../domain/entities/background_stale_threshold.dart';
 
 class BackgroundRefreshSettingsSection extends StatelessWidget {
-  const BackgroundRefreshSettingsSection({
-    super.key,
-    required this.controller,
-  });
+  const BackgroundRefreshSettingsSection({super.key, required this.controller});
 
   final BackgroundRefreshSettingsController controller;
 
@@ -49,21 +46,25 @@ class BackgroundRefreshSettingsSection extends StatelessWidget {
                     )
                     .toList(growable: false);
               },
-              items: BackgroundRefreshMode.values.map((mode) {
-                final unavailable =
-                    mode == BackgroundRefreshMode.backgroundSafeDataSourceOnly &&
-                    !controller.backgroundSafeDataSourceAvailable;
-                return DropdownMenuItem(
-                  value: mode,
-                  child: Text(
-                    unavailable
-                        ? '${mode.label} (experimental unavailable)'
-                        : mode.label,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                );
-              }).toList(growable: false),
+              items: BackgroundRefreshMode.values
+                  .map((mode) {
+                    final unavailable =
+                        mode ==
+                            BackgroundRefreshMode
+                                .backgroundSafeDataSourceOnly &&
+                        !controller.backgroundSafeDataSourceAvailable;
+                    return DropdownMenuItem(
+                      value: mode,
+                      child: Text(
+                        unavailable
+                            ? '${mode.label} (experimental unavailable)'
+                            : mode.label,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    );
+                  })
+                  .toList(growable: false),
               onChanged: controller.isBusy
                   ? null
                   : (value) {
@@ -174,9 +175,8 @@ class BackgroundRefreshSettingsSection extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: controller.isBusy
                     ? null
-                    : () => unawaited(
-                          controller.requestNotificationPermission(),
-                        ),
+                    : () =>
+                          unawaited(controller.requestNotificationPermission()),
                 icon: const Icon(Icons.notifications_active_outlined),
                 label: const Text('Request notification permission'),
               ),

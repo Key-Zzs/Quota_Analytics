@@ -56,8 +56,7 @@ class EvaluateNotificationRules {
       );
     }
 
-    if (settings.refreshFailureReminderEnabled &&
-        lastRefreshFailedAt != null) {
+    if (settings.refreshFailureReminderEnabled && lastRefreshFailedAt != null) {
       candidates.add(NotificationCandidate.refreshFailed());
     }
 

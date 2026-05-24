@@ -7,6 +7,8 @@ class AppSettings {
     required this.refreshInterval,
     required this.manualRefreshPolicy,
     required this.updatedAt,
+    this.reloadBeforeManualRefreshEnabled = true,
+    this.reloadBeforeForegroundAutoRefreshEnabled = false,
   });
 
   factory AppSettings.defaults(DateTime updatedAt) {
@@ -15,6 +17,8 @@ class AppSettings {
       refreshInterval: RefreshInterval.off,
       manualRefreshPolicy: ManualRefreshPolicy.defaults(),
       updatedAt: updatedAt,
+      reloadBeforeManualRefreshEnabled: true,
+      reloadBeforeForegroundAutoRefreshEnabled: false,
     );
   }
 
@@ -22,12 +26,16 @@ class AppSettings {
   final RefreshInterval refreshInterval;
   final ManualRefreshPolicy manualRefreshPolicy;
   final DateTime updatedAt;
+  final bool reloadBeforeManualRefreshEnabled;
+  final bool reloadBeforeForegroundAutoRefreshEnabled;
 
   AppSettings copyWith({
     bool? autoRefreshEnabled,
     RefreshInterval? refreshInterval,
     ManualRefreshPolicy? manualRefreshPolicy,
     DateTime? updatedAt,
+    bool? reloadBeforeManualRefreshEnabled,
+    bool? reloadBeforeForegroundAutoRefreshEnabled,
   }) {
     final nextInterval = refreshInterval ?? this.refreshInterval;
     final nextAutoRefreshEnabled =
@@ -40,6 +48,12 @@ class AppSettings {
           : RefreshInterval.off,
       manualRefreshPolicy: manualRefreshPolicy ?? this.manualRefreshPolicy,
       updatedAt: updatedAt ?? this.updatedAt,
+      reloadBeforeManualRefreshEnabled:
+          reloadBeforeManualRefreshEnabled ??
+          this.reloadBeforeManualRefreshEnabled,
+      reloadBeforeForegroundAutoRefreshEnabled:
+          reloadBeforeForegroundAutoRefreshEnabled ??
+          this.reloadBeforeForegroundAutoRefreshEnabled,
     );
   }
 }

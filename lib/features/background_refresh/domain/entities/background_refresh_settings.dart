@@ -54,8 +54,8 @@ class BackgroundRefreshSettings {
   final Duration minimumRunSpacing;
   final DateTime updatedAt;
 
-  bool get shouldSchedule => mode != BackgroundRefreshMode.disabled &&
-      !checkInterval.isOff;
+  bool get shouldSchedule =>
+      mode != BackgroundRefreshMode.disabled && !checkInterval.isOff;
 
   BackgroundRefreshSettings copyWith({
     BackgroundRefreshMode? mode,

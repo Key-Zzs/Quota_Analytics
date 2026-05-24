@@ -13,10 +13,9 @@ void main() {
   const usecase = EvaluateBackgroundRefreshEligibility();
 
   BackgroundRefreshSettings enabled(BackgroundRefreshMode mode) {
-    return BackgroundRefreshSettings.defaults(now).copyWith(
-      mode: mode,
-      checkInterval: BackgroundCheckInterval.oneHour,
-    );
+    return BackgroundRefreshSettings.defaults(
+      now,
+    ).copyWith(mode: mode, checkInterval: BackgroundCheckInterval.oneHour);
   }
 
   test('disabled -> skippedDisabled', () {
@@ -52,25 +51,28 @@ void main() {
     expect(result.notifyOnly, isTrue);
   });
 
-  test('backgroundSafeDataSourceOnly without datasource falls back notifyOnly', () {
-    final result = usecase(
-      settings: enabled(BackgroundRefreshMode.backgroundSafeDataSourceOnly),
-      latestSnapshot: null,
-      lastSuccessfulRefreshAt: null,
-      lastFailedRefreshAt: null,
-      now: now,
-      appInForeground: false,
-      backgroundSafeDataSourceAvailable: false,
-      notificationPermissionStatus: NotificationPermissionStatus.granted,
-    );
+  test(
+    'backgroundSafeDataSourceOnly without datasource falls back notifyOnly',
+    () {
+      final result = usecase(
+        settings: enabled(BackgroundRefreshMode.backgroundSafeDataSourceOnly),
+        latestSnapshot: null,
+        lastSuccessfulRefreshAt: null,
+        lastFailedRefreshAt: null,
+        now: now,
+        appInForeground: false,
+        backgroundSafeDataSourceAvailable: false,
+        notificationPermissionStatus: NotificationPermissionStatus.granted,
+      );
 
-    expect(
-      result.status,
-      BackgroundRefreshEligibilityStatus.skippedNoBackgroundSafeDataSource,
-    );
-    expect(result.notifyOnly, isTrue);
-    expect(result.warnings.single, contains('falling back to notify-only'));
-  });
+      expect(
+        result.status,
+        BackgroundRefreshEligibilityStatus.skippedNoBackgroundSafeDataSource,
+      );
+      expect(result.notifyOnly, isTrue);
+      expect(result.warnings.single, contains('falling back to notify-only'));
+    },
+  );
 
   test('cooldown active -> skippedCooldown', () {
     final result = usecase(
@@ -82,8 +84,9 @@ void main() {
       appInForeground: false,
       backgroundSafeDataSourceAvailable: false,
       notificationPermissionStatus: NotificationPermissionStatus.granted,
-      lastRunResult:
-          BackgroundRefreshResult.running(now.subtract(const Duration(minutes: 5))),
+      lastRunResult: BackgroundRefreshResult.running(
+        now.subtract(const Duration(minutes: 5)),
+      ),
     );
 
     expect(result.status, BackgroundRefreshEligibilityStatus.skippedCooldown);

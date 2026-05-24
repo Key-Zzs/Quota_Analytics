@@ -12,10 +12,11 @@ import 'package:quota_analytics/features/quota/domain/entities/quota_snapshot.da
 void main() {
   test('schedule delegates to repository adapter', () async {
     final repository = _FakeBackgroundRepository();
-    final settings = BackgroundRefreshSettings.defaults(DateTime(2026)).copyWith(
-      mode: BackgroundRefreshMode.notifyOnly,
-      checkInterval: BackgroundCheckInterval.oneHour,
-    );
+    final settings = BackgroundRefreshSettings.defaults(DateTime(2026))
+        .copyWith(
+          mode: BackgroundRefreshMode.notifyOnly,
+          checkInterval: BackgroundCheckInterval.oneHour,
+        );
 
     await ScheduleBackgroundRefresh(repository)(settings);
 
@@ -68,14 +69,12 @@ class _FakeBackgroundRepository implements BackgroundRefreshRepository {
   @override
   Future<BackgroundRefreshResult> saveLastResult(
     BackgroundRefreshResult result,
-  ) async =>
-      result;
+  ) async => result;
 
   @override
   Future<BackgroundRefreshSettings> saveSettings(
     BackgroundRefreshSettings settings,
-  ) async =>
-      settings;
+  ) async => settings;
 
   @override
   Future<void> schedule(BackgroundRefreshSettings settings) async {

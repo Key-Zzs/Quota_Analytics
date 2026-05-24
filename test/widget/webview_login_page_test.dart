@@ -26,6 +26,7 @@ import 'package:quota_analytics/features/refresh/domain/usecases/refresh_quota_f
 import 'package:quota_analytics/features/refresh/domain/usecases/save_manual_refresh_snapshot.dart';
 import 'package:quota_analytics/features/refresh/presentation/controllers/manual_refresh_controller.dart';
 import 'package:quota_analytics/features/settings/data/mock_settings_repository.dart';
+import 'package:quota_analytics/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -43,6 +44,7 @@ void main() {
             controller: controller,
             pageTextExtractionController: _buildExtractionController(),
             manualRefreshController: _buildManualRefreshController(),
+            settingsController: _buildSettingsController(),
             webViewBuilder: (context, controller) {
               return const Center(child: Text('Fake WebView'));
             },
@@ -79,6 +81,11 @@ void main() {
     expect(find.textContaining('placeholder'), findsNothing);
 
     expect(find.text('Manual Refresh from Current Page'), findsOneWidget);
+    expect(find.text('Reload page before manual refresh'), findsOneWidget);
+    expect(
+      find.text('Manual Refresh will reload the page first.'),
+      findsOneWidget,
+    );
     expect(find.text('Extract Page Text'), findsOneWidget);
     expect(
       find.ancestor(
@@ -107,6 +114,7 @@ void main() {
             ),
             pageTextExtractionController: _buildExtractionController(),
             manualRefreshController: _buildManualRefreshController(),
+            settingsController: _buildSettingsController(),
             webViewBuilder: (context, controller) {
               return const Center(child: Text('Fake WebView'));
             },
@@ -134,6 +142,7 @@ void main() {
             ),
             pageTextExtractionController: _buildExtractionController(),
             manualRefreshController: _buildManualRefreshController(),
+            settingsController: _buildSettingsController(),
             webViewBuilder: (context, controller) {
               return const SizedBox.shrink();
             },
@@ -231,6 +240,8 @@ void main() {
     expect(find.text('No background WebView refresh'), findsOneWidget);
     expect(find.text('No HTML extraction'), findsWidgets);
     expect(find.text('No network upload'), findsOneWidget);
+    expect(find.text('lastReloadStatus'), findsOneWidget);
+    expect(find.text('No hidden WebView'), findsOneWidget);
   });
 }
 
@@ -261,6 +272,10 @@ ManualRefreshController _buildManualRefreshController() {
     policyProvider: ManualRefreshPolicy.defaults,
     clock: clock,
   );
+}
+
+SettingsController _buildSettingsController() {
+  return SettingsController(repository: MockSettingsRepository());
 }
 
 class _FakeWebAuthRepository implements WebAuthRepository {
