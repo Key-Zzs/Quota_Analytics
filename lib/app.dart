@@ -8,6 +8,11 @@ import 'core/storage/memory_json_storage.dart';
 import 'core/storage/shared_preferences_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/time/clock.dart';
+import 'features/auto_refresh/data/repositories/foreground_auto_refresh_repository.dart';
+import 'features/auto_refresh/domain/entities/auto_refresh_policy.dart';
+import 'features/auto_refresh/domain/usecases/evaluate_auto_refresh_eligibility.dart';
+import 'features/auto_refresh/domain/usecases/run_foreground_auto_refresh.dart';
+import 'features/auto_refresh/presentation/controllers/foreground_auto_refresh_controller.dart';
 import 'features/auth/presentation/controllers/webview_auth_controller.dart';
 import 'features/auth/presentation/pages/webview_login_page.dart';
 import 'features/debug/presentation/pages/debug_page.dart';
@@ -157,6 +162,7 @@ class _QuotaShellState extends State<QuotaShell> {
       ),
       SettingsPage(
         controller: settingsController,
+        autoRefreshController: controllers.autoRefreshController,
         onClearLocalData: _clearAllLocalData,
       ),
       _buildWebLoginPage(controllers),
@@ -167,6 +173,7 @@ class _QuotaShellState extends State<QuotaShell> {
         pageTextExtractionController: controllers.pageTextExtractionController,
         quotaParserController: controllers.quotaParserController,
         manualRefreshController: controllers.manualRefreshController,
+        autoRefreshController: controllers.autoRefreshController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -282,10 +289,43 @@ class _QuotaShellState extends State<QuotaShell> {
       clock: effectiveClock,
     );
 
-    final controllers = _AppControllers(
-      quotaController: QuotaController(repository: quotaRepository),
+    final manualRefreshController = ManualRefreshController(
+      refreshQuotaFromWebView: RefreshQuotaFromWebView(
+        extractionRepository: pageTextExtractionRepository,
+        parserRepository: quotaParserRepository,
+        mapper: const ParseResultToQuotaSnapshotMapper(),
+        manualRefreshRepository: manualRefreshRepository,
+        saveManualRefreshSnapshot: saveManualRefreshSnapshot,
+        clock: effectiveClock,
+      ),
+      saveManualRefreshSnapshot: saveManualRefreshSnapshot,
+      manualRefreshRepository: manualRefreshRepository,
+      policyProvider: () => settingsController.manualRefreshPolicy,
+      clock: effectiveClock,
+    );
+    final autoRefreshPolicy = AutoRefreshPolicy();
+    final autoRefreshRepository = ForegroundAutoRefreshRepository(
+      manualRefreshController: manualRefreshController,
+    );
+    final quotaController = QuotaController(repository: quotaRepository);
+    final webAuthController = WebViewAuthController(clock: effectiveClock);
+    final autoRefreshController = ForegroundAutoRefreshController(
       settingsController: settingsController,
-      webAuthController: WebViewAuthController(clock: effectiveClock),
+      webAuthController: webAuthController,
+      manualRefreshController: manualRefreshController,
+      evaluateEligibility: EvaluateAutoRefreshEligibility(
+        policy: autoRefreshPolicy,
+      ),
+      runForegroundAutoRefresh: RunForegroundAutoRefresh(autoRefreshRepository),
+      policy: autoRefreshPolicy,
+      onSnapshotSaved: quotaController.applySavedSnapshot,
+      clock: effectiveClock,
+    );
+
+    final controllers = _AppControllers(
+      quotaController: quotaController,
+      settingsController: settingsController,
+      webAuthController: webAuthController,
       pageTextExtractionController: PageTextExtractionController(
         repository: pageTextExtractionRepository,
       ),
@@ -294,20 +334,8 @@ class _QuotaShellState extends State<QuotaShell> {
         mapper: const ParseResultToQuotaSnapshotMapper(),
         saveParsedQuotaSnapshot: SaveParsedQuotaSnapshot(quotaRepository),
       ),
-      manualRefreshController: ManualRefreshController(
-        refreshQuotaFromWebView: RefreshQuotaFromWebView(
-          extractionRepository: pageTextExtractionRepository,
-          parserRepository: quotaParserRepository,
-          mapper: const ParseResultToQuotaSnapshotMapper(),
-          manualRefreshRepository: manualRefreshRepository,
-          saveManualRefreshSnapshot: saveManualRefreshSnapshot,
-          clock: effectiveClock,
-        ),
-        saveManualRefreshSnapshot: saveManualRefreshSnapshot,
-        manualRefreshRepository: manualRefreshRepository,
-        policyProvider: () => settingsController.manualRefreshPolicy,
-        clock: effectiveClock,
-      ),
+      manualRefreshController: manualRefreshController,
+      autoRefreshController: autoRefreshController,
     );
     _controllers = controllers;
 
@@ -358,6 +386,7 @@ class _AppControllers {
     required this.pageTextExtractionController,
     required this.quotaParserController,
     required this.manualRefreshController,
+    required this.autoRefreshController,
   });
 
   final QuotaController quotaController;
@@ -366,8 +395,10 @@ class _AppControllers {
   final PageTextExtractionController pageTextExtractionController;
   final QuotaParserController quotaParserController;
   final ManualRefreshController manualRefreshController;
+  final ForegroundAutoRefreshController autoRefreshController;
 
   void dispose() {
+    autoRefreshController.dispose();
     quotaController.dispose();
     settingsController.dispose();
     webAuthController.dispose();

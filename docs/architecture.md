@@ -3,14 +3,15 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 6 keeps acquisition manual and local while connecting the
-WebView visible-text extraction, redaction, parser, confidence policy, and local
-snapshot persistence into a real user-triggered refresh flow.
+information. Stage 7 keeps acquisition local while connecting a mobile WebView
+layout fix and foreground-only auto refresh to the existing Stage 6 manual
+refresh pipeline.
 
-Stage 6 does not implement cookies, tokens, storage reads, HTML extraction,
-backend calls, automatic refresh, or background refresh. The WebView login
-container, text extraction flow, parser, manual refresh orchestration, and quota
-persistence remain intentionally separate.
+Stage 7 does not implement cookies, tokens, storage reads, HTML extraction,
+backend calls, background refresh, or notifications. The WebView login
+container, text extraction flow, parser, manual refresh orchestration,
+foreground auto refresh orchestration, and quota persistence remain
+intentionally separate.
 
 ## Layers
 
@@ -33,6 +34,9 @@ The app uses a feature-first Clean Architecture layout:
   confidence rules, result-to-snapshot mapper, controller state, and widgets.
 - `features/refresh`: Stage 6 manual refresh orchestration, typed status/result
   model, save policy, persisted last result, use cases, controller, and widgets.
+- `features/auto_refresh`: Stage 7 foreground lifecycle/timer orchestration,
+  eligibility rules, status model, repository adapter, controller, and status
+  widget. It reuses Stage 6 and does not read WebView JavaScript directly.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -140,6 +144,12 @@ The auth feature owns the WebView login container:
 The auth feature does not expose cookies, tokens, page HTML, page body text,
 localStorage, sessionStorage, or quota data to the quota feature.
 
+Stage 7 changes the WebView page layout shell. The WebView now sits in a keyed
+`Expanded` main region (`webview-expanded-region`) with compact, collapsible
+top safety/status controls and a compact bottom action panel. This keeps the
+outer Flutter shell from constraining the WebView to a fixed small height on
+phones; page scrolling remains inside the WebView.
+
 ## Extraction Feature
 
 The extraction feature owns Stage 4 manual page text extraction:
@@ -227,14 +237,37 @@ The refresh feature owns Stage 6 manual orchestration:
 The refresh feature composes extraction, parser, and persistence. It does not
 own WebView JavaScript, parser regexes, or direct `shared_preferences` access.
 
+## Auto Refresh Feature
+
+The auto refresh feature owns Stage 7 foreground orchestration:
+
+- `AutoRefreshStatus`: typed disabled, idle, skipped, refreshing, success,
+  failed, and cooldown statuses.
+- `AutoRefreshState`: enabled flag, selected interval, last attempt/success,
+  next eligible time, cooldown, last error, and in-progress flag.
+- `AutoRefreshPolicy`: interval and failure cooldown calculations.
+- `EvaluateAutoRefreshEligibility`: pure use case for foreground, WebView,
+  URL, loading, interval, duplicate, and cooldown checks.
+- `RunForegroundAutoRefresh`: use case that invokes an auto refresh repository.
+- `ForegroundAutoRefreshRepository`: adapter that calls
+  `ManualRefreshController.refreshFromCurrentPage`.
+- `ForegroundAutoRefreshController`: `WidgetsBindingObserver` lifecycle bridge,
+  foreground timer owner, duplicate guard, and status publisher.
+- `AutoRefreshStatusCard`: Settings status display.
+
+The controller starts its timer only when settings are enabled and lifecycle is
+`resumed`. It stops on `paused`, `inactive`, `hidden`, `detached`, and dispose.
+It never opens a WebView page, logs in, reads cookies/tokens/storage, reads
+HTML, uploads data, or parses outside the Stage 6 manual refresh use case.
+
 ## Why Manual Refresh And Auto Refresh Are Separate
 
 Manual refresh is a user-intent boundary: the user opens a page, taps a clear
 button, reviews the result, and confirms save unless policy allows
-high-confidence auto-save. Automatic refresh would introduce scheduling,
-navigation timing, retry, and user-awareness risks. Keeping it as a future
-feature prevents Stage 6 from silently polling pages or collecting text outside
-an explicit tap.
+high-confidence auto-save. Foreground auto refresh is a scheduling boundary: it
+adds lifecycle, interval, retry, and user-awareness rules while deliberately
+reusing the same Stage 6 pipeline. Keeping the features separate prevents the
+timer from owning WebView JavaScript, parser regexes, or persistence details.
 
 ## Why Extraction And Parser Are Separate
 
@@ -260,20 +293,22 @@ contracts expose typed entities and futures. This keeps the core quota/settings
 model reusable for future local JSON files, SQLite/Drift, an official API
 adapter, a reviewed WebView source, or desktop agents without changing widgets.
 
-## Why Automatic Refresh Is Still Disabled
+## Why Background Refresh Is Still Disabled
 
-Manual-only scope keeps the early milestones safe and testable:
+Foreground-only scope keeps Stage 7 safe and testable:
 
 - User-driven WebView login only, with no app access to credentials.
 - User-triggered visible text extraction only, with no cookie or token handling.
 - Local parser only for redacted visible text.
-- User-reviewed save policy for parsed snapshots.
+- User-reviewed save policy for medium confidence parsed snapshots.
+- Low-frequency foreground timer only when the app is resumed.
 - No network parsing or uploads.
 - No hidden background refresh.
 - Fast local unit and widget tests.
 - Clear UI and domain shape before security-sensitive integrations.
 - Local persistence stores mock quota data, user settings, the latest redacted
-  extracted text preview, and user-confirmed parsed snapshot previews.
+  extracted text preview, the last manual refresh result, and policy-approved
+  parsed snapshot previews.
 
 ## Future Replacements
 

@@ -1,14 +1,55 @@
 # Security
 
+## Stage 7 Foreground Auto Refresh Boundary
+
+Stage 7 adds foreground-only automation. It does not add background refresh.
+Auto refresh runs only while the Flutter lifecycle is `resumed`, the user has
+enabled the setting, and the current already-open WebView page passes the same
+Stage 6 safety checks.
+
+When the app is `paused`, `inactive`, `hidden`, or `detached`, the foreground
+timer is stopped and no refresh is attempted. Stage 7 does not use WorkManager,
+foreground services, boot receivers, notifications, cron, launchd, or any
+background keepalive.
+
+Auto refresh still uses only the Stage 4/6 page content boundary:
+
+```js
+(() => document.body ? document.body.innerText : '')();
+```
+
+Stage 7 does not read or extract:
+
+- `document.cookie`
+- WebView cookies
+- `localStorage`
+- `sessionStorage`
+- `indexedDB`
+- Access tokens, refresh tokens, session tokens, authorization headers, or
+  network requests.
+- HTML, DOM structure, scripts, CSS, request headers, or network responses.
+
+Auto refresh does not open pages automatically and does not log in
+automatically. The user must already have opened the WebView and navigated to an
+allowed HTTPS page. The feature reuses `ManualRefreshPolicy`: high confidence
+can auto-save only if the user enables that setting, medium confidence remains a
+candidate requiring confirmation, and low/failed results are not saved.
+
+Automatic saving carries stale/incorrect parser risk if the official page text
+changes. Keeping high-confidence auto-save off by default limits that risk.
+Medium and low confidence results must not silently overwrite the latest
+snapshot.
+
 ## Stage 6 Manual Refresh Boundary
 
 Stage 6 adds a real user-triggered manual refresh flow. The flow composes the
 existing WebView visible-text extraction, local redaction, local parser,
 confidence policy, and local snapshot persistence.
 
-The user must tap `Manual Refresh from Current Page`. The app does not refresh
-on app startup, page load, navigation events, timers, loops, foreground
-automation, background jobs, WorkManager, cron, launchd, or polling.
+The user can tap `Manual Refresh from Current Page`. Stage 7 may also trigger
+the same pipeline from a foreground-only timer when explicitly enabled. The app
+does not refresh on app startup, page load, navigation events, background jobs,
+WorkManager, cron, launchd, or hidden polling.
 
 Stage 6 still reads only:
 
@@ -214,9 +255,9 @@ Stage 3 adds user-driven HTTPS WebView navigation for official-site login. It
 does not add a quota network API, remote backend, telemetry SDK, advertising
 SDK, crash reporting SDK, or automatic refresh job.
 
-Stage 5 parsing and Stage 6 manual refresh are local Dart code only. They do
-not add network upload, backend sync, telemetry, automatic refresh, or
-background refresh.
+Stage 5 parsing, Stage 6 manual refresh, and Stage 7 foreground auto refresh are
+local Dart code only. They do not add network upload, backend sync, telemetry,
+or background refresh.
 
 Development commands such as `flutter doctor`, `flutter pub get`, and Android
 Gradle builds may perform normal toolchain checks or dependency resolution, but
@@ -232,6 +273,9 @@ cookies, storage, HTML, request headers, or network responses. Web content
 permission requests are denied by the app, and Android only adds the normal
 `INTERNET` permission required for HTTPS WebView navigation.
 Stage 6 reuses the same extraction boundary and adds local orchestration only.
+Stage 7 reuses that orchestration from the foreground lifecycle only. The
+WebView layout fix changes Flutter widget constraints and does not broaden page
+content access.
 
 ## Debug Raw Text Risk
 
@@ -243,7 +287,8 @@ store an evidence summary, not the full parser input. Any future raw-text parser
 input must go through another review before it can be persisted, exported, or
 uploaded.
 Stage 6 manual refresh results store redaction summaries and parser evidence
-only; they do not store raw page text.
+only; they do not store raw page text. Stage 7 auto refresh status stores
+attempt/success times, cooldown/error state, and typed status only.
 
 ## Device Testing
 
@@ -253,4 +298,5 @@ For real-device testing:
 - Avoid granting unrelated device permissions.
 - Keep logs local.
 - Do not connect real account flows until the security boundary is reviewed.
-- Prefer manual refresh before any foreground or background automation.
+- Prefer manual refresh before enabling foreground automation.
+- Do not test background automation in Stage 7; it is not implemented.

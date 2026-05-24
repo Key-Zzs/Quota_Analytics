@@ -12,51 +12,58 @@ class WebViewStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'WebView status',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            _StatusRow(label: 'Current URL', value: controller.currentUrl),
-            _StatusRow(label: 'Page title', value: controller.pageTitle),
-            _StatusRow(
-              label: 'Loading progress',
-              value: '${controller.loadingProgress}%',
-            ),
-            _StatusRow(
-              label: 'Last navigation time',
-              value: formatDateTime(controller.lastNavigationTime),
-            ),
-            _StatusRow(
-              label: 'Last error',
-              value: controller.lastError ?? 'none',
-            ),
-            _StatusRow(
-              label: 'Auth status',
-              value: controller.authStatus.label,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Login status is inferred from navigation only and may be inaccurate.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            if (controller.message != null) ...[
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        title: Text(
+          'WebView status',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        subtitle: Text(
+          '${controller.loadingProgress}%  ${controller.currentUrl}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _StatusRow(label: 'Current URL', value: controller.currentUrl),
+              _StatusRow(label: 'Page title', value: controller.pageTitle),
+              _StatusRow(
+                label: 'Loading progress',
+                value: '${controller.loadingProgress}%',
+              ),
+              _StatusRow(
+                label: 'Last navigation time',
+                value: formatDateTime(controller.lastNavigationTime),
+              ),
+              _StatusRow(
+                label: 'Last error',
+                value: controller.lastError ?? 'none',
+              ),
+              _StatusRow(
+                label: 'Auth status',
+                value: controller.authStatus.label,
+              ),
               const SizedBox(height: 8),
               Text(
-                controller.message!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
+                'Login status is inferred from navigation only and may be inaccurate.',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
+              if (controller.message != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  controller.message!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

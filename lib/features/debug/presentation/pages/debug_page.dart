@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/security/sensitive_data_policy.dart';
 import '../../../../core/utils/date_time_format.dart';
+import '../../../auto_refresh/presentation/controllers/foreground_auto_refresh_controller.dart';
 import '../../../auth/presentation/controllers/webview_auth_controller.dart';
 import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
 import '../../../extraction/presentation/widgets/extracted_text_preview.dart';
@@ -25,6 +26,7 @@ class DebugPage extends StatelessWidget {
     required this.pageTextExtractionController,
     required this.quotaParserController,
     required this.manualRefreshController,
+    required this.autoRefreshController,
     required this.onClearLocalData,
   });
 
@@ -34,6 +36,7 @@ class DebugPage extends StatelessWidget {
   final PageTextExtractionController pageTextExtractionController;
   final QuotaParserController quotaParserController;
   final ManualRefreshController manualRefreshController;
+  final ForegroundAutoRefreshController autoRefreshController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -46,6 +49,7 @@ class DebugPage extends StatelessWidget {
         pageTextExtractionController,
         quotaParserController,
         manualRefreshController,
+        autoRefreshController,
       ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
@@ -262,7 +266,10 @@ class DebugPage extends StatelessWidget {
               title: 'Stage 5 Quota Parser',
               children: [
                 const _DebugRow(label: 'Quota parser enabled', value: 'true'),
-                const _DebugRow(label: 'Automatic refresh', value: 'disabled'),
+                _DebugRow(
+                  label: 'Automatic refresh',
+                  value: settingsController.autoRefreshEnabled.toString(),
+                ),
                 _DebugRow(
                   label: 'Last parser input length',
                   value: quotaParserController.lastParserInputLength.toString(),
@@ -337,8 +344,75 @@ class DebugPage extends StatelessWidget {
                   label: 'Last saved snapshot id',
                   value: manualRefreshController.lastSavedSnapshotId ?? 'none',
                 ),
-                const _DebugRow(label: 'Automatic refresh', value: 'disabled'),
+                const _DebugRow(
+                  label: 'Manual refresh background trigger',
+                  value: 'disabled',
+                ),
                 const _DebugRow(label: 'Background refresh', value: 'disabled'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DebugCard(
+              title: 'Stage 7 Foreground Auto Refresh',
+              children: [
+                _DebugRow(
+                  label: 'Foreground auto refresh enabled',
+                  value: autoRefreshController.state.enabled.toString(),
+                ),
+                _DebugRow(
+                  label: 'Interval',
+                  value: autoRefreshController.state.interval.label,
+                ),
+                _DebugRow(
+                  label: 'Lifecycle state',
+                  value: autoRefreshController.lifecycleState.name,
+                ),
+                _DebugRow(
+                  label: 'Last auto refresh attempt',
+                  value: formatDateTime(
+                    autoRefreshController.state.lastAttemptAt,
+                  ),
+                ),
+                _DebugRow(
+                  label: 'Last auto refresh success',
+                  value: formatDateTime(
+                    autoRefreshController.state.lastSuccessAt,
+                  ),
+                ),
+                _DebugRow(
+                  label: 'Next eligible refresh',
+                  value: formatDateTime(
+                    autoRefreshController.state.nextEligibleAt,
+                  ),
+                ),
+                _DebugRow(
+                  label: 'Current auto refresh status',
+                  value: autoRefreshController.state.status.label,
+                ),
+                _DebugRow(
+                  label: 'Last auto refresh error',
+                  value: autoRefreshController.state.lastError ?? 'none',
+                ),
+                _DebugRow(
+                  label: 'Refresh in progress',
+                  value: autoRefreshController.state.isRefreshInProgress
+                      .toString(),
+                ),
+                _DebugRow(
+                  label: 'WebView layout mode',
+                  value: autoRefreshController.layoutMode,
+                ),
+                _DebugRow(
+                  label: 'WebView current sanitized URL',
+                  value: webAuthController.currentUrl,
+                ),
+                const _DebugRow(label: 'No background refresh', value: 'true'),
+                const _DebugRow(
+                  label: 'No cookie/token/storage access',
+                  value: 'true',
+                ),
+                const _DebugRow(label: 'No HTML extraction', value: 'true'),
+                const _DebugRow(label: 'No network upload', value: 'true'),
               ],
             ),
             const SizedBox(height: 12),
@@ -376,6 +450,7 @@ class DebugPage extends StatelessWidget {
                 Text('Manual visible text extraction only'),
                 Text('Local quota parsing from redacted text only'),
                 Text('Manual refresh requires a user tap'),
+                Text('Foreground auto refresh reuses manual refresh pipeline'),
                 Text('No background refresh'),
                 SizedBox(height: 8),
                 Text(AppConstants.stageNotice),

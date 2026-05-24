@@ -41,6 +41,30 @@ void main() {
     expect(loaded.updatedAt, DateTime.utc(2026, 1, 1, 9));
   });
 
+  test('saves and loads auto-save high confidence policy', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = await _buildRepository();
+
+    await repository.saveSettings(
+      AppSettings(
+        autoRefreshEnabled: true,
+        refreshInterval: RefreshInterval.fiveMinutes,
+        manualRefreshPolicy: const ManualRefreshPolicy(
+          autoSaveHighConfidence: true,
+          requireConfirmationForMediumConfidence: true,
+          allowLowConfidenceSave: false,
+        ),
+        updatedAt: DateTime.utc(2026, 1, 1),
+      ),
+    );
+
+    final loaded = await repository.getSettings();
+
+    expect(loaded.autoRefreshEnabled, isTrue);
+    expect(loaded.refreshInterval, RefreshInterval.fiveMinutes);
+    expect(loaded.manualRefreshPolicy.autoSaveHighConfidence, isTrue);
+  });
+
   test('clears settings back to defaults', () async {
     SharedPreferences.setMockInitialValues({});
     final repository = await _buildRepository();

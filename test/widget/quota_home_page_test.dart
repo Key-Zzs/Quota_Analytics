@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.textContaining('Stage 6: user-triggered'), findsOneWidget);
+    expect(find.textContaining('Stage 7: foreground-only'), findsOneWidget);
     expect(find.text('Go to Web Refresh'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
@@ -83,9 +83,14 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Foreground Auto Refresh'), findsOneWidget);
+    expect(find.text('Foreground only'), findsOneWidget);
+    expect(find.text('No background refresh'), findsOneWidget);
+    expect(find.text('No automatic login'), findsOneWidget);
+    expect(find.text('Uses current WebView page only'), findsOneWidget);
     expect(find.text('Off'), findsWidgets);
 
-    await tester.tap(find.text('Off').last);
+    await tester.tap(find.byType(DropdownButtonFormField<RefreshInterval>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('30 minutes').last);
     await tester.pumpAndSettle();

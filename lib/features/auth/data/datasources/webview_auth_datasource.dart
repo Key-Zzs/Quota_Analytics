@@ -30,6 +30,7 @@ class WebViewAuthDataSource {
        ) {
     unawaited(webViewController.setBackgroundColor(Colors.transparent));
     unawaited(webViewController.setJavaScriptMode(JavaScriptMode.unrestricted));
+    unawaited(webViewController.enableZoom(true));
     unawaited(
       webViewController.setNavigationDelegate(
         NavigationDelegate(

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/date_time_format.dart';
+import '../../../auto_refresh/presentation/controllers/foreground_auto_refresh_controller.dart';
+import '../../../auto_refresh/presentation/widgets/auto_refresh_status_card.dart';
 import '../controllers/settings_controller.dart';
 import '../widgets/refresh_interval_selector.dart';
 
@@ -10,10 +12,12 @@ class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,
     required this.controller,
+    this.autoRefreshController,
     required this.onClearLocalData,
   });
 
   final SettingsController controller;
+  final ForegroundAutoRefreshController? autoRefreshController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -32,8 +36,10 @@ class SettingsPage extends StatelessWidget {
               child: Column(
                 children: [
                   SwitchListTile(
-                    title: const Text('Automatic refresh'),
-                    subtitle: const Text('Saved locally for future stages'),
+                    title: const Text('Foreground Auto Refresh'),
+                    subtitle: const Text(
+                      'Foreground only. Uses the current WebView page.',
+                    ),
                     value: controller.autoRefreshEnabled,
                     onChanged: controller.isSaving
                         ? null
@@ -46,6 +52,18 @@ class SettingsPage extends StatelessWidget {
                       onChanged: controller.isSaving
                           ? (_) {}
                           : controller.setRefreshInterval,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Foreground only'),
+                        Text('No background refresh'),
+                        Text('No automatic login'),
+                        Text('Uses current WebView page only'),
+                      ],
                     ),
                   ),
                   Padding(
@@ -64,6 +82,10 @@ class SettingsPage extends StatelessWidget {
                 ],
               ),
             ),
+            if (autoRefreshController != null) ...[
+              const SizedBox(height: 12),
+              AutoRefreshStatusCard(controller: autoRefreshController!),
+            ],
             const SizedBox(height: 12),
             Card(
               child: Column(

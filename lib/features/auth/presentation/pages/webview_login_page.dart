@@ -97,95 +97,161 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
         widget.manualRefreshController,
       ]),
       builder: (context, _) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final webViewHeight = constraints.maxHeight < 700 ? 360.0 : 460.0;
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(
-                  'Official Web Login',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+        final topMaxHeight = MediaQuery.sizeOf(context).height < 700
+            ? 184.0
+            : 232.0;
+        return SafeArea(
+          child: Column(
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: topMaxHeight),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: Column(
+                    children: [
+                      const WebViewSafetyNotice(),
+                      const SizedBox(height: 8),
+                      WebViewControls(controller: _controller),
+                      const SizedBox(height: 8),
+                      WebViewStatusBar(controller: _controller),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Official website is loaded inside WebView. This app stays outside the credential boundary.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                const WebViewSafetyNotice(),
-                const SizedBox(height: 12),
-                WebViewControls(controller: _controller),
-                const SizedBox(height: 12),
-                WebViewStatusBar(controller: _controller),
-                if (widget.manualRefreshController != null) ...[
-                  const SizedBox(height: 12),
-                  _ManualRefreshSection(
-                    webAuthController: _controller,
-                    manualRefreshController: widget.manualRefreshController!,
-                    onSnapshotSaved: widget.onParsedSnapshotSaved,
+              ),
+              Expanded(
+                key: const ValueKey('webview-expanded-region'),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: _WebViewFrame(
+                    child:
+                        widget.webViewBuilder?.call(context, _controller) ??
+                        _webView ??
+                        const Center(child: CircularProgressIndicator()),
                   ),
-                ],
-                if (widget.pageTextExtractionController != null) ...[
-                  const SizedBox(height: 12),
-                  ExtractionStatusCard(
-                    controller: widget.pageTextExtractionController!,
-                    quotaParserController: widget.quotaParserController,
-                    onParsedSnapshotSaved: widget.onParsedSnapshotSaved,
-                  ),
-                ],
-                const SizedBox(height: 12),
-                _WebViewFrame(
-                  height: webViewHeight,
-                  child:
-                      widget.webViewBuilder?.call(context, _controller) ??
-                      _webView ??
-                      const Center(child: CircularProgressIndicator()),
                 ),
-              ],
-            );
-          },
+              ),
+              _BottomActionPanel(
+                webAuthController: _controller,
+                pageTextExtractionController:
+                    widget.pageTextExtractionController,
+                quotaParserController: widget.quotaParserController,
+                manualRefreshController: widget.manualRefreshController,
+                onSnapshotSaved: widget.onParsedSnapshotSaved,
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _ManualRefreshSection extends StatelessWidget {
-  const _ManualRefreshSection({
+class _BottomActionPanel extends StatelessWidget {
+  const _BottomActionPanel({
     required this.webAuthController,
+    required this.pageTextExtractionController,
+    required this.quotaParserController,
     required this.manualRefreshController,
     required this.onSnapshotSaved,
   });
 
   final WebViewAuthController webAuthController;
-  final ManualRefreshController manualRefreshController;
+  final PageTextExtractionController? pageTextExtractionController;
+  final QuotaParserController? quotaParserController;
+  final ManualRefreshController? manualRefreshController;
   final ValueChanged<QuotaSnapshot>? onSnapshotSaved;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ManualRefreshButton(
-          isBusy: manualRefreshController.isBusy,
-          onPressed: () => unawaited(_runManualRefresh()),
+    if (manualRefreshController == null &&
+        pageTextExtractionController == null) {
+      return const SizedBox.shrink();
+    }
+
+    final maxHeight = MediaQuery.sizeOf(context).height < 700 ? 176.0 : 220.0;
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Material(
+          elevation: 3,
+          color: Theme.of(context).colorScheme.surface,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            shrinkWrap: true,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (manualRefreshController != null)
+                      ManualRefreshButton(
+                        isBusy: manualRefreshController!.isBusy,
+                        onPressed: () => unawaited(_runManualRefresh()),
+                      ),
+                    if (manualRefreshController != null &&
+                        pageTextExtractionController != null)
+                      const SizedBox(width: 8),
+                    if (pageTextExtractionController != null)
+                      OutlinedButton.icon(
+                        onPressed: pageTextExtractionController!.isExtracting
+                            ? null
+                            : () => unawaited(
+                                pageTextExtractionController!
+                                    .extractCurrentPageText(),
+                              ),
+                        icon: const Icon(Icons.text_snippet_outlined),
+                        label: Text(
+                          pageTextExtractionController!.isExtracting
+                              ? 'Extracting Page Text...'
+                              : 'Extract Page Text',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (manualRefreshController != null)
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  title: const Text('Manual refresh details'),
+                  children: [
+                    ManualRefreshStatusCard(
+                      controller: manualRefreshController!,
+                    ),
+                    const SizedBox(height: 8),
+                    ManualRefreshResultCard(
+                      controller: manualRefreshController!,
+                      onSnapshotSaved: onSnapshotSaved,
+                    ),
+                  ],
+                ),
+              if (pageTextExtractionController != null)
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  title: const Text('Extraction details'),
+                  children: [
+                    ExtractionStatusCard(
+                      controller: pageTextExtractionController!,
+                      quotaParserController: quotaParserController,
+                      onParsedSnapshotSaved: onSnapshotSaved,
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        ManualRefreshStatusCard(controller: manualRefreshController),
-        const SizedBox(height: 12),
-        ManualRefreshResultCard(
-          controller: manualRefreshController,
-          onSnapshotSaved: onSnapshotSaved,
-        ),
-      ],
+      ),
     );
   }
 
   Future<void> _runManualRefresh() async {
-    final saved = await manualRefreshController.refreshFromCurrentPage(
+    final controller = manualRefreshController;
+    if (controller == null) {
+      return;
+    }
+    final saved = await controller.refreshFromCurrentPage(
       ManualRefreshPageState(
         currentUrl: webAuthController.currentUrl,
         pageTitle: webAuthController.pageTitle,
@@ -200,9 +266,8 @@ class _ManualRefreshSection extends StatelessWidget {
 }
 
 class _WebViewFrame extends StatelessWidget {
-  const _WebViewFrame({required this.height, required this.child});
+  const _WebViewFrame({required this.child});
 
-  final double height;
   final Widget child;
 
   @override
@@ -211,22 +276,26 @@ class _WebViewFrame extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'WebView container',
-          style: Theme.of(context).textTheme.titleMedium,
+        Row(
+          children: [
+            Icon(Icons.public, color: colorScheme.primary, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'WebView container',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: colorScheme.outlineVariant),
-              color: colorScheme.surface,
-            ),
-            child: SizedBox(
-              height: height,
-              width: double.infinity,
-              child: child,
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: colorScheme.outlineVariant),
+                color: colorScheme.surface,
+              ),
+              child: SizedBox.expand(child: child),
             ),
           ),
         ),

@@ -51,51 +51,33 @@ void main() {
       ),
     );
 
-    expect(find.text('Official Web Login'), findsOneWidget);
     expect(
-      find.text(
-        'You are logging in through the official website inside a WebView.',
-      ),
+      find.text('Stage 7: foreground only, visible text only'),
       findsOneWidget,
     );
     expect(
-      find.text('This app does not read cookies or tokens.'),
+      find.text('No cookies, tokens, storage, HTML, or uploads.'),
       findsOneWidget,
-    );
-    expect(
-      find.text(
-        'Quota parsing runs locally only after text has been redacted.',
-      ),
-      findsWidgets,
     );
     expect(find.text('Open login page'), findsOneWidget);
     expect(find.text('Open usage page'), findsOneWidget);
-    expect(find.text('Reload'), findsOneWidget);
-    expect(find.text('Clear WebView data'), findsOneWidget);
+    expect(find.byTooltip('Reload'), findsOneWidget);
+    expect(find.byTooltip('Clear WebView data'), findsOneWidget);
+    expect(find.textContaining('placeholder'), findsNothing);
 
-    await tester.scrollUntilVisible(
-      find.text('Manual Refresh from Current Page'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
     expect(find.text('Manual Refresh from Current Page'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('Extract Page Text'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
     expect(find.text('Extract Page Text'), findsOneWidget);
-
-    await tester.drag(find.byType(ListView).first, const Offset(0, -900));
-    await tester.pumpAndSettle();
-
     expect(find.text('Fake WebView'), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.text('Fake WebView'),
+        matching: find.byKey(const ValueKey('webview-expanded-region')),
+      ),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('Web Login page displays Stage 4 extraction safety notice', (
-    tester,
-  ) async {
+  testWidgets('Web Login page keeps safety notice collapsible', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -114,18 +96,28 @@ void main() {
     );
 
     expect(
-      find.textContaining('local parser for redacted visible text'),
-      findsWidgets,
+      find.text('Stage 7: foreground only, visible text only'),
+      findsOneWidget,
     );
     expect(
       find.text(
         'No cookies, tokens, localStorage, sessionStorage, or HTML are accessed.',
       ),
-      findsWidgets,
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Stage 7: foreground only, visible text only'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'No cookies, tokens, localStorage, sessionStorage, or HTML are accessed.',
+      ),
+      findsOneWidget,
     );
     expect(
       find.text('Extracted text is redacted and kept local for debugging.'),
-      findsWidgets,
+      findsOneWidget,
     );
   });
 
@@ -179,6 +171,16 @@ void main() {
     );
     expect(find.text('Quota parser enabled'), findsOneWidget);
     expect(find.text('Automatic refresh'), findsWidgets);
+
+    await tester.scrollUntilVisible(
+      find.text('Stage 7 Foreground Auto Refresh'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Stage 7 Foreground Auto Refresh'), findsOneWidget);
+    expect(find.text('No background refresh'), findsWidgets);
+    expect(find.text('No HTML extraction'), findsWidgets);
+    expect(find.text('No network upload'), findsOneWidget);
   });
 }
 

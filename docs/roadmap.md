@@ -41,8 +41,9 @@ only after policy allows it. No automatic or background refresh is included.
 
 ## Stage 7: Foreground Auto Refresh
 
-Add foreground-only refresh while the app is open. Keep it user-controlled and
-visible.
+Implemented foreground-only refresh while the app is open and resumed. It is
+off by default, uses the current already-open WebView page only, reuses the
+Stage 6 manual refresh pipeline, and adds a mobile WebView layout fix.
 
 ## Stage 8: Android Background Refresh And Notifications
 
@@ -71,7 +72,7 @@ appropriate for this use case.
 - [x] Stage 4: Usage page text extraction
 - [x] Stage 5: Quota parser with confidence levels
 - [x] Stage 6: Real manual refresh flow
-- [ ] Stage 7: Foreground auto refresh
+- [x] Stage 7: Foreground auto refresh
 - [ ] Stage 8: Android background refresh and notifications
 - [ ] Stage 9: iOS adaptation
 - [ ] Stage 10: Desktop / wearable clients

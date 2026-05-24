@@ -17,66 +17,63 @@ class WebViewControls extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'WebView controls',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  onPressed: isReady
-                      ? () => unawaited(controller.openLoginPage())
-                      : null,
-                  icon: const Icon(Icons.login),
-                  label: const Text('Open login page'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: isReady
-                      ? () => unawaited(controller.openUsagePage())
-                      : null,
-                  icon: const Icon(Icons.open_in_browser),
-                  label: const Text('Open usage page'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: canNavigate
-                      ? () => unawaited(controller.reload())
-                      : null,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reload'),
-                ),
-                IconButton.outlined(
-                  tooltip: 'Back',
-                  onPressed: canNavigate && controller.canGoBack
-                      ? () => unawaited(controller.goBack())
-                      : null,
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                IconButton.outlined(
-                  tooltip: 'Forward',
-                  onPressed: canNavigate && controller.canGoForward
-                      ? () => unawaited(controller.goForward())
-                      : null,
-                  icon: const Icon(Icons.arrow_forward),
-                ),
-                OutlinedButton.icon(
-                  onPressed: isReady
-                      ? () => unawaited(_confirmClearWebViewData(context))
-                      : null,
-                  icon: const Icon(Icons.cleaning_services_outlined),
-                  label: const Text('Clear WebView data'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'This only clears this app\'s WebView data where supported. It does not clear your system browser.',
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  FilledButton.icon(
+                    onPressed: isReady
+                        ? () => unawaited(controller.openLoginPage())
+                        : null,
+                    icon: const Icon(Icons.login),
+                    label: const Text('Open login page'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: isReady
+                        ? () => unawaited(controller.openUsagePage())
+                        : null,
+                    icon: const Icon(Icons.open_in_browser),
+                    label: const Text('Open usage page'),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Reload',
+                    onPressed: canNavigate
+                        ? () => unawaited(controller.reload())
+                        : null,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Back',
+                    onPressed: canNavigate && controller.canGoBack
+                        ? () => unawaited(controller.goBack())
+                        : null,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Forward',
+                    onPressed: canNavigate && controller.canGoForward
+                        ? () => unawaited(controller.goForward())
+                        : null,
+                    icon: const Icon(Icons.arrow_forward),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Clear WebView data',
+                    onPressed: isReady
+                        ? () => unawaited(_confirmClearWebViewData(context))
+                        : null,
+                    icon: const Icon(Icons.cleaning_services_outlined),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
