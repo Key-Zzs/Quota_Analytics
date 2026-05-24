@@ -26,13 +26,14 @@ Possible causes considered:
 
 Actual changes:
 
-- `WebViewLoginPage` now uses a `SafeArea` + `Column` shell.
-- The WebView is inside the keyed `Expanded` region
-  `webview-expanded-region` and fills the remaining main area.
-- Safety notice and WebView status are compact `ExpansionTile` panels.
-- WebView controls are horizontal and compact.
-- Manual refresh and extraction actions moved into a compact bottom action
-  panel with scrollable details.
+- `WebViewLoginPage` now uses a `SafeArea` + `Stack` shell.
+- The WebView is inside the keyed `Positioned.fill` region
+  `webview-expanded-region`, so it visually fills the Web Login tab like a
+  phone-screen viewport.
+- Safety notice, WebView controls, and WebView status are compact translucent
+  top overlays instead of height-taking layout rows.
+- Manual refresh and extraction actions moved into a compact translucent bottom
+  overlay with scrollable details.
 - `WebViewAuthDataSource` keeps JavaScript enabled for the existing extraction
   flow and enables WebView zoom where supported.
 

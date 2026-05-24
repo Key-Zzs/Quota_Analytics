@@ -97,31 +97,13 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
         widget.manualRefreshController,
       ]),
       builder: (context, _) {
-        final topMaxHeight = MediaQuery.sizeOf(context).height < 700
-            ? 184.0
-            : 232.0;
         return SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: topMaxHeight),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                  child: Column(
-                    children: [
-                      const WebViewSafetyNotice(),
-                      const SizedBox(height: 8),
-                      WebViewControls(controller: _controller),
-                      const SizedBox(height: 8),
-                      WebViewStatusBar(controller: _controller),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
+              Positioned.fill(
                 key: const ValueKey('webview-expanded-region'),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  padding: const EdgeInsets.all(8),
                   child: _WebViewFrame(
                     child:
                         widget.webViewBuilder?.call(context, _controller) ??
@@ -130,18 +112,68 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
                   ),
                 ),
               ),
-              _BottomActionPanel(
-                webAuthController: _controller,
-                pageTextExtractionController:
-                    widget.pageTextExtractionController,
-                quotaParserController: widget.quotaParserController,
-                manualRefreshController: widget.manualRefreshController,
-                onSnapshotSaved: widget.onParsedSnapshotSaved,
+              Positioned(
+                left: 8,
+                right: 8,
+                top: 8,
+                child: _TopOverlayPanel(controller: _controller),
+              ),
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: _BottomActionPanel(
+                  webAuthController: _controller,
+                  pageTextExtractionController:
+                      widget.pageTextExtractionController,
+                  quotaParserController: widget.quotaParserController,
+                  manualRefreshController: widget.manualRefreshController,
+                  onSnapshotSaved: widget.onParsedSnapshotSaved,
+                ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _TopOverlayPanel extends StatelessWidget {
+  const _TopOverlayPanel({required this.controller});
+
+  final WebViewAuthController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.sizeOf(context).height < 700 ? 148.0 : 176.0;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            children: [
+              WebViewControls(controller: controller),
+              const SizedBox(height: 6),
+              const WebViewSafetyNotice(),
+              const SizedBox(height: 6),
+              WebViewStatusBar(controller: controller),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -168,79 +200,83 @@ class _BottomActionPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final maxHeight = MediaQuery.sizeOf(context).height < 700 ? 176.0 : 220.0;
-    return SafeArea(
-      top: false,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: Material(
-          elevation: 3,
-          color: Theme.of(context).colorScheme.surface,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            shrinkWrap: true,
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (manualRefreshController != null)
-                      ManualRefreshButton(
-                        isBusy: manualRefreshController!.isBusy,
-                        onPressed: () => unawaited(_runManualRefresh()),
+    final maxHeight = MediaQuery.sizeOf(context).height < 700 ? 144.0 : 184.0;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.14),
+              blurRadius: 14,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          shrinkWrap: true,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (manualRefreshController != null)
+                    ManualRefreshButton(
+                      isBusy: manualRefreshController!.isBusy,
+                      onPressed: () => unawaited(_runManualRefresh()),
+                    ),
+                  if (manualRefreshController != null &&
+                      pageTextExtractionController != null)
+                    const SizedBox(width: 8),
+                  if (pageTextExtractionController != null)
+                    OutlinedButton.icon(
+                      onPressed: pageTextExtractionController!.isExtracting
+                          ? null
+                          : () => unawaited(
+                              pageTextExtractionController!
+                                  .extractCurrentPageText(),
+                            ),
+                      icon: const Icon(Icons.text_snippet_outlined),
+                      label: Text(
+                        pageTextExtractionController!.isExtracting
+                            ? 'Extracting Page Text...'
+                            : 'Extract Page Text',
                       ),
-                    if (manualRefreshController != null &&
-                        pageTextExtractionController != null)
-                      const SizedBox(width: 8),
-                    if (pageTextExtractionController != null)
-                      OutlinedButton.icon(
-                        onPressed: pageTextExtractionController!.isExtracting
-                            ? null
-                            : () => unawaited(
-                                pageTextExtractionController!
-                                    .extractCurrentPageText(),
-                              ),
-                        icon: const Icon(Icons.text_snippet_outlined),
-                        label: Text(
-                          pageTextExtractionController!.isExtracting
-                              ? 'Extracting Page Text...'
-                              : 'Extract Page Text',
-                        ),
-                      ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-              if (manualRefreshController != null)
-                ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: EdgeInsets.zero,
-                  title: const Text('Manual refresh details'),
-                  children: [
-                    ManualRefreshStatusCard(
-                      controller: manualRefreshController!,
-                    ),
-                    const SizedBox(height: 8),
-                    ManualRefreshResultCard(
-                      controller: manualRefreshController!,
-                      onSnapshotSaved: onSnapshotSaved,
-                    ),
-                  ],
-                ),
-              if (pageTextExtractionController != null)
-                ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: EdgeInsets.zero,
-                  title: const Text('Extraction details'),
-                  children: [
-                    ExtractionStatusCard(
-                      controller: pageTextExtractionController!,
-                      quotaParserController: quotaParserController,
-                      onParsedSnapshotSaved: onSnapshotSaved,
-                    ),
-                  ],
-                ),
-            ],
-          ),
+            ),
+            if (manualRefreshController != null)
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: const Text('Manual refresh details'),
+                children: [
+                  ManualRefreshStatusCard(controller: manualRefreshController!),
+                  const SizedBox(height: 8),
+                  ManualRefreshResultCard(
+                    controller: manualRefreshController!,
+                    onSnapshotSaved: onSnapshotSaved,
+                  ),
+                ],
+              ),
+            if (pageTextExtractionController != null)
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: const Text('Extraction details'),
+                children: [
+                  ExtractionStatusCard(
+                    controller: pageTextExtractionController!,
+                    quotaParserController: quotaParserController,
+                    onParsedSnapshotSaved: onSnapshotSaved,
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
@@ -273,33 +309,15 @@ class _WebViewFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.public, color: colorScheme.primary, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              'WebView container',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-          ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: colorScheme.outlineVariant),
+          color: colorScheme.surface,
         ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(color: colorScheme.outlineVariant),
-                color: colorScheme.surface,
-              ),
-              child: SizedBox.expand(child: child),
-            ),
-          ),
-        ),
-      ],
+        child: SizedBox.expand(child: child),
+      ),
     );
   }
 }
