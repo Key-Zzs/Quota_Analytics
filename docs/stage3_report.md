@@ -61,7 +61,7 @@ The manifest does not enable cleartext traffic.
 
 Central definitions live in `lib/core/constants/web_constants.dart`:
 
-- `loginUrl`: `https://chatgpt.com/auth/login`
+- `loginUrl`: `https://chatgpt.com/codex/cloud/settings/analytics`
 - `usageUrlPlaceholder`: `https://chatgpt.com/#settings`
 
 The usage URL is a placeholder for an official account/settings surface. A

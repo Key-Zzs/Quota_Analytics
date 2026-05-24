@@ -9,7 +9,7 @@ void main() {
 
     expect(config.loginUri.scheme, 'https');
     expect(config.loginUri.host, 'chatgpt.com');
-    expect(config.loginUri.path, contains('login'));
+    expect(config.loginUri.path, '/codex/cloud/settings/analytics');
     expect(config.usageUriPlaceholder.scheme, 'https');
     expect(config.usageUriPlaceholder.host, 'chatgpt.com');
   });
