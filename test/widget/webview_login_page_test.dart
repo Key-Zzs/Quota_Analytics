@@ -52,6 +52,19 @@ void main() {
     );
 
     expect(
+      find.byKey(const ValueKey('webview-container-control')),
+      findsOneWidget,
+    );
+    expect(find.text('Fake WebView'), findsOneWidget);
+    expect(find.text('Open login page'), findsNothing);
+    expect(find.text('Open usage page'), findsNothing);
+    expect(find.text('Manual Refresh from Current Page'), findsNothing);
+    expect(find.text('Extract Page Text'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('webview-container-control')));
+    await tester.pumpAndSettle();
+
+    expect(
       find.text('Stage 7: foreground only, visible text only'),
       findsOneWidget,
     );
@@ -67,7 +80,6 @@ void main() {
 
     expect(find.text('Manual Refresh from Current Page'), findsOneWidget);
     expect(find.text('Extract Page Text'), findsOneWidget);
-    expect(find.text('Fake WebView'), findsOneWidget);
     expect(
       find.ancestor(
         of: find.text('Fake WebView'),
@@ -75,6 +87,41 @@ void main() {
       ),
       findsOneWidget,
     );
+
+    await tester.tap(find.byTooltip('Close WebView container controls'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open login page'), findsNothing);
+    expect(find.text('Fake WebView'), findsOneWidget);
+  });
+
+  testWidgets('Web Login page keeps WebView unobstructed until controls open', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WebViewLoginPage(
+            controller: WebViewAuthController(
+              repository: _FakeWebAuthRepository(),
+            ),
+            pageTextExtractionController: _buildExtractionController(),
+            manualRefreshController: _buildManualRefreshController(),
+            webViewBuilder: (context, controller) {
+              return const Center(child: Text('Fake WebView'));
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Fake WebView'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('webview-container-control')),
+      findsOneWidget,
+    );
+    expect(find.text('Open usage page'), findsNothing);
+    expect(find.text('Extract Page Text'), findsNothing);
   });
 
   testWidgets('Web Login page keeps safety notice collapsible', (tester) async {
@@ -94,6 +141,9 @@ void main() {
         ),
       ),
     );
+
+    await tester.tap(find.byKey(const ValueKey('webview-container-control')));
+    await tester.pumpAndSettle();
 
     expect(
       find.text('Stage 7: foreground only, visible text only'),

@@ -30,10 +30,11 @@ Actual changes:
 - The WebView is inside the keyed `Positioned.fill` region
   `webview-expanded-region`, so it visually fills the Web Login tab like a
   phone-screen viewport.
-- Safety notice, WebView controls, and WebView status are compact translucent
-  top overlays instead of height-taking layout rows.
-- Manual refresh and extraction actions moved into a compact translucent bottom
-  overlay with scrollable details.
+- The default overlay is now only a small `WebView container` control, keeping
+  the page visible.
+- Tapping `WebView container` opens a floating control sheet with login/usage
+  navigation, safety notice, WebView status, manual refresh, extraction, and
+  details.
 - `WebViewAuthDataSource` keeps JavaScript enabled for the existing extraction
   flow and enables WebView zoom where supported.
 
@@ -42,11 +43,11 @@ Manual verification:
 1. Open the app on a phone or emulator.
 2. Go to `Web Login`.
 3. Confirm the WebView container occupies the main visible area.
-4. Tap `Open login page`.
-5. Tap `Open usage page`.
-6. Confirm the page itself scrolls inside the WebView.
-7. Expand safety/status/details panels and confirm the WebView still returns to
-   the main available height when panels are collapsed.
+4. Tap `WebView container`.
+5. Tap `Open login page`.
+6. Tap `Open usage page`.
+7. Close the floating control sheet and confirm the page itself scrolls inside
+   the WebView without controls covering the content.
 
 If the issue remains, next checks are Android WebView composition differences,
 device-specific system insets, page viewport meta behavior on the official
@@ -70,6 +71,11 @@ Foreground auto refresh is an orchestration feature. It does not read WebView
 content directly and does not own parser rules. It asks the Stage 6 manual
 refresh controller to run the same safe pipeline against the current WebView
 page when eligibility passes.
+
+By design, Stage 7 extracts the current rendered WebView page. It does not
+reload the page before extraction. If the official page does not update its
+visible text by itself, auto refresh can read stale quota text until the user
+manually reloads or navigates again.
 
 Main pieces:
 

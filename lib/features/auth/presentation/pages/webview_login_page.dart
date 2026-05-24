@@ -113,22 +113,13 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
                 ),
               ),
               Positioned(
-                left: 8,
-                right: 8,
+                right: 12,
                 top: 8,
-                child: _TopOverlayPanel(controller: _controller),
-              ),
-              Positioned(
-                left: 8,
-                right: 8,
-                bottom: 8,
-                child: _BottomActionPanel(
-                  webAuthController: _controller,
-                  pageTextExtractionController:
-                      widget.pageTextExtractionController,
-                  quotaParserController: widget.quotaParserController,
-                  manualRefreshController: widget.manualRefreshController,
-                  onSnapshotSaved: widget.onParsedSnapshotSaved,
+                child: FilledButton.icon(
+                  key: const ValueKey('webview-container-control'),
+                  onPressed: () => _showWebViewContainerPanel(context),
+                  icon: const Icon(Icons.web_asset),
+                  label: const Text('WebView container'),
                 ),
               ),
             ],
@@ -137,43 +128,97 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
       },
     );
   }
+
+  Future<void> _showWebViewContainerPanel(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.82,
+          child: _WebViewContainerPanel(
+            webAuthController: _controller,
+            pageTextExtractionController: widget.pageTextExtractionController,
+            quotaParserController: widget.quotaParserController,
+            manualRefreshController: widget.manualRefreshController,
+            onSnapshotSaved: widget.onParsedSnapshotSaved,
+            onClose: () => Navigator.of(sheetContext).pop(),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _TopOverlayPanel extends StatelessWidget {
-  const _TopOverlayPanel({required this.controller});
+class _WebViewContainerPanel extends StatelessWidget {
+  const _WebViewContainerPanel({
+    required this.webAuthController,
+    required this.pageTextExtractionController,
+    required this.quotaParserController,
+    required this.manualRefreshController,
+    required this.onSnapshotSaved,
+    required this.onClose,
+  });
 
-  final WebViewAuthController controller;
+  final WebViewAuthController webAuthController;
+  final PageTextExtractionController? pageTextExtractionController;
+  final QuotaParserController? quotaParserController;
+  final ManualRefreshController? manualRefreshController;
+  final ValueChanged<QuotaSnapshot>? onSnapshotSaved;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height < 700 ? 148.0 : 176.0;
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        webAuthController,
+        pageTextExtractionController,
+        quotaParserController,
+        manualRefreshController,
+      ]),
+      builder: (context, _) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.web_asset,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'WebView container',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close WebView container controls',
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            WebViewControls(controller: webAuthController),
+            const SizedBox(height: 8),
+            const WebViewSafetyNotice(),
+            const SizedBox(height: 8),
+            WebViewStatusBar(controller: webAuthController),
+            const SizedBox(height: 8),
+            _BottomActionPanel(
+              webAuthController: webAuthController,
+              pageTextExtractionController: pageTextExtractionController,
+              quotaParserController: quotaParserController,
+              manualRefreshController: manualRefreshController,
+              onSnapshotSaved: onSnapshotSaved,
             ),
           ],
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            children: [
-              WebViewControls(controller: controller),
-              const SizedBox(height: 6),
-              const WebViewSafetyNotice(),
-              const SizedBox(height: 6),
-              WebViewStatusBar(controller: controller),
-            ],
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -200,53 +245,43 @@ class _BottomActionPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final maxHeight = MediaQuery.sizeOf(context).height < 700 ? 144.0 : 184.0;
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.14),
-              blurRadius: 14,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-          shrinkWrap: true,
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (manualRefreshController != null)
-                    ManualRefreshButton(
-                      isBusy: manualRefreshController!.isBusy,
-                      onPressed: () => unawaited(_runManualRefresh()),
-                    ),
-                  if (manualRefreshController != null &&
-                      pageTextExtractionController != null)
-                    const SizedBox(width: 8),
-                  if (pageTextExtractionController != null)
-                    OutlinedButton.icon(
-                      onPressed: pageTextExtractionController!.isExtracting
-                          ? null
-                          : () => unawaited(
-                              pageTextExtractionController!
-                                  .extractCurrentPageText(),
-                            ),
-                      icon: const Icon(Icons.text_snippet_outlined),
-                      label: Text(
-                        pageTextExtractionController!.isExtracting
-                            ? 'Extracting Page Text...'
-                            : 'Extract Page Text',
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (manualRefreshController != null)
+                      ManualRefreshButton(
+                        isBusy: manualRefreshController!.isBusy,
+                        onPressed: () => unawaited(_runManualRefresh()),
                       ),
-                    ),
-                ],
+                    if (manualRefreshController != null &&
+                        pageTextExtractionController != null)
+                      const SizedBox(width: 8),
+                    if (pageTextExtractionController != null)
+                      OutlinedButton.icon(
+                        onPressed: pageTextExtractionController!.isExtracting
+                            ? null
+                            : () => unawaited(
+                                pageTextExtractionController!
+                                    .extractCurrentPageText(),
+                              ),
+                        icon: const Icon(Icons.text_snippet_outlined),
+                        label: Text(
+                          pageTextExtractionController!.isExtracting
+                              ? 'Extracting Page Text...'
+                              : 'Extract Page Text',
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             if (manualRefreshController != null)
