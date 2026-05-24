@@ -134,6 +134,42 @@ Weekly quota
     expect(_window(result, QuotaWindowType.weekly).remaining, 800);
     expect(result.warnings, isEmpty);
   });
+
+  test(
+    'Chinese Codex analytics sample parses percent remaining and reset time',
+    () {
+      now = DateTime(2026, 5, 24, 17);
+      final result = parser.parse('''
+5 小时使用限额
+
+29%
+剩余
+重置时间：21:58
+
+每周使用限额
+
+89%
+剩余
+重置时间：2026年5月31日 16:58
+
+剩余额度
+0
+''', now: now);
+
+      expect(result.success, isTrue);
+      expect(result.confidence, ParserConfidence.high);
+
+      final fiveHour = _window(result, QuotaWindowType.fiveHour);
+      expect(fiveHour.remainingRatio, 0.29);
+      expect(fiveHour.resetAt, DateTime(2026, 5, 24, 21, 58));
+      expect(fiveHour.resetText, contains('21:58'));
+
+      final weekly = _window(result, QuotaWindowType.weekly);
+      expect(weekly.remainingRatio, 0.89);
+      expect(weekly.resetAt, DateTime(2026, 5, 31, 16, 58));
+      expect(weekly.resetText, contains('2026年5月31日 16:58'));
+    },
+  );
 }
 
 dynamic _window(dynamic result, QuotaWindowType type) {

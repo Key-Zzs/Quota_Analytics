@@ -166,6 +166,14 @@ class RegexQuotaParser implements QuotaParser {
       percentCandidates.addAll(
         _percentageCandidates(line, labelLine.index, matchedSignals),
       );
+      percentCandidates.addAll(
+        _nearbyPercentageCandidates(
+          line,
+          nearby,
+          labelLine.index,
+          matchedSignals,
+        ),
+      );
 
       final parsedReset = parseResetText(line.original, now);
       if (parsedReset != null) {
@@ -261,10 +269,35 @@ class RegexQuotaParser implements QuotaParser {
     required TextLine labelLine,
     required List<WindowLabelCandidate> allLabelCandidates,
   }) {
+    final otherLabels =
+        allLabelCandidates
+            .where((candidate) => candidate.type != type)
+            .map((candidate) => candidate.line.index)
+            .toList(growable: false)
+          ..sort();
+    if (line.index >= labelLine.index) {
+      final nextOtherLabel = otherLabels
+          .where((index) => index > labelLine.index)
+          .cast<int?>()
+          .firstWhere((_) => true, orElse: () => null);
+      if (nextOtherLabel == null || line.index < nextOtherLabel) {
+        return true;
+      }
+    } else {
+      final previousOtherLabels = otherLabels
+          .where((index) => index < labelLine.index)
+          .toList(growable: false);
+      final previousOtherLabel = previousOtherLabels.isEmpty
+          ? null
+          : previousOtherLabels.last;
+      if (previousOtherLabel != null && line.index > previousOtherLabel) {
+        return false;
+      }
+    }
+
     final ownDistance = (line.index - labelLine.index).abs();
-    final otherDistances = allLabelCandidates
-        .where((candidate) => candidate.type != type)
-        .map((candidate) => (line.index - candidate.line.index).abs())
+    final otherDistances = otherLabels
+        .map((index) => (line.index - index).abs())
         .toList(growable: false);
     if (otherDistances.isEmpty) {
       return true;
@@ -396,6 +429,51 @@ class RegexQuotaParser implements QuotaParser {
       );
     }
     return candidates;
+  }
+
+  List<_NumericCandidate> _nearbyPercentageCandidates(
+    TextLine line,
+    List<TextLine> nearby,
+    int labelIndex,
+    Set<String> matchedSignals,
+  ) {
+    final percentMatch = RegExp(
+      r'^\s*(\d{1,3}(?:\.\d{1,2})?)\s*%\s*$',
+    ).firstMatch(line.normalized);
+    if (percentMatch == null) {
+      return const [];
+    }
+
+    final context = nearby
+        .where((candidate) => (candidate.index - line.index).abs() <= 1)
+        .map((candidate) => candidate.normalized)
+        .join(' ');
+    final isUsed = RegExp(
+      r'\bused\b|已使用|使用中|已用',
+      caseSensitive: false,
+    ).hasMatch(context);
+    final isRemaining = RegExp(
+      r'\bremaining\b|\bleft\b|剩余',
+      caseSensitive: false,
+    ).hasMatch(context);
+    if (!isUsed && !isRemaining) {
+      return const [];
+    }
+
+    final percent = NumberPatterns.parseDouble(percentMatch.group(1));
+    final ratio = _ratioFromPercent(percent, isUsed ? 'used' : 'remaining');
+    if (ratio == null) {
+      return const [];
+    }
+
+    matchedSignals.add('nearby percentage pattern');
+    return [
+      _NumericCandidate(
+        remainingRatio: ratio,
+        line: line,
+        score: _scoreLine(line, labelIndex, baseScore: 46),
+      ),
+    ];
   }
 
   ParsedCredits? _parseCredits(
