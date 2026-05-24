@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.textContaining('Stage 7: foreground-only'), findsOneWidget);
+    expect(find.textContaining('Stage 8:'), findsOneWidget);
     expect(find.text('Go to Web Refresh'), findsOneWidget);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));

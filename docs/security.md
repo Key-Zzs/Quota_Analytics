@@ -1,5 +1,63 @@
 # Security
 
+## Stage 8 Background Refresh And Notifications Boundary
+
+Stage 8 adds Android WorkManager scheduling and local notifications. It does not
+add real background web refresh. With no official API or background-safe data
+source, background work is notify-only.
+
+The background task may read only app-owned local data:
+
+- Background refresh settings.
+- Latest saved quota snapshot summary.
+- Shallow manual refresh failure status and timestamps.
+- Notification cooldown metadata.
+- Last background run metadata.
+
+The background snapshot loader deliberately replaces account labels with
+`Local snapshot` and strips `rawDebugText`. The manual refresh metadata loader
+reads only shallow status/timestamp fields and does not deserialize nested
+extracted page text or parser output.
+
+Stage 8 background work does not read or extract:
+
+- WebView content.
+- Hidden WebViews.
+- `document.cookie`.
+- WebView cookies.
+- Browser cookies.
+- `localStorage`.
+- `sessionStorage`.
+- `indexedDB`.
+- Access tokens, refresh tokens, session tokens, authorization headers, or
+  network requests.
+- HTML, DOM structure, scripts, CSS, request headers, or network responses.
+- Parser raw input or raw page text.
+
+Stage 8 notification content is fixed and safe. Notifications do not include
+account emails, full URLs, raw page text, parser input/output, tokens, stack
+traces, or web-derived sensitive content. Notification taps open the app only;
+they do not trigger background WebView refresh.
+
+Android permission changes:
+
+- `POST_NOTIFICATIONS` is declared so Android 13+ users can grant local
+  notification permission.
+- `RECEIVE_BOOT_COMPLETED` is declared for Android WorkManager rescheduling
+  after reboot.
+- `WAKE_LOCK` is declared for Android WorkManager/AndroidX Work runtime while it
+  completes short local work.
+- `flutter_local_notifications` would merge `VIBRATE`, but this app removes it
+  because vibration is not required.
+- `ACCESS_NETWORK_STATE` is removed because this stage does not use network
+  constraints.
+- `FOREGROUND_SERVICE` and `SCHEDULE_EXACT_ALARM` are not declared by the app.
+
+Stage 8 does not use foreground services, exact alarms, dangerous permissions,
+remote push, Firebase, analytics, advertising SDKs, crash reporting SDKs, or
+remote configuration. WorkManager execution is best-effort and must not be used
+to force hidden login or hidden scraping behavior.
+
 ## Stage 7 Foreground Auto Refresh Boundary
 
 Stage 7 adds foreground-only automation. It does not add background refresh.

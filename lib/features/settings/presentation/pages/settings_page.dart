@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/date_time_format.dart';
 import '../../../auto_refresh/presentation/controllers/foreground_auto_refresh_controller.dart';
 import '../../../auto_refresh/presentation/widgets/auto_refresh_status_card.dart';
+import '../../../background_refresh/presentation/controllers/background_refresh_settings_controller.dart';
+import '../../../background_refresh/presentation/widgets/background_refresh_settings_section.dart';
 import '../controllers/settings_controller.dart';
 import '../widgets/refresh_interval_selector.dart';
 
@@ -13,11 +15,13 @@ class SettingsPage extends StatelessWidget {
     super.key,
     required this.controller,
     this.autoRefreshController,
+    this.backgroundRefreshController,
     required this.onClearLocalData,
   });
 
   final SettingsController controller;
   final ForegroundAutoRefreshController? autoRefreshController;
+  final BackgroundRefreshSettingsController? backgroundRefreshController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -85,6 +89,17 @@ class SettingsPage extends StatelessWidget {
             if (autoRefreshController != null) ...[
               const SizedBox(height: 12),
               AutoRefreshStatusCard(controller: autoRefreshController!),
+            ],
+            if (backgroundRefreshController != null) ...[
+              const SizedBox(height: 12),
+              AnimatedBuilder(
+                animation: backgroundRefreshController!,
+                builder: (context, _) {
+                  return BackgroundRefreshSettingsSection(
+                    controller: backgroundRefreshController!,
+                  );
+                },
+              ),
             ],
             const SizedBox(height: 12),
             Card(

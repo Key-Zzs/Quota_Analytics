@@ -228,7 +228,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Stage 7 Foreground Auto Refresh'), findsOneWidget);
-    expect(find.text('No background refresh'), findsWidgets);
+    expect(find.text('No background WebView refresh'), findsOneWidget);
     expect(find.text('No HTML extraction'), findsWidgets);
     expect(find.text('No network upload'), findsOneWidget);
   });

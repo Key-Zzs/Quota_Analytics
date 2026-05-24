@@ -3,15 +3,16 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 7 keeps acquisition local while connecting a mobile WebView
-layout fix and foreground-only auto refresh to the existing Stage 6 manual
-refresh pipeline.
+information. Stage 8 adds Android background task infrastructure and local
+notifications while preserving the foreground-only WebView acquisition
+boundary.
 
-Stage 7 does not implement cookies, tokens, storage reads, HTML extraction,
-backend calls, background refresh, or notifications. The WebView login
-container, text extraction flow, parser, manual refresh orchestration,
-foreground auto refresh orchestration, and quota persistence remain
-intentionally separate.
+Stage 8 does not implement cookies, tokens, storage reads, HTML extraction,
+backend calls, hidden WebView scraping, or true background web refresh. The
+WebView login container, text extraction flow, parser, manual refresh
+orchestration, foreground auto refresh orchestration, background local-check
+orchestration, notifications, and quota persistence remain intentionally
+separate.
 
 ## Layers
 
@@ -37,6 +38,13 @@ The app uses a feature-first Clean Architecture layout:
 - `features/auto_refresh`: Stage 7 foreground lifecycle/timer orchestration,
   eligibility rules, status model, repository adapter, controller, and status
   widget. It reuses Stage 6 and does not read WebView JavaScript directly.
+- `features/background_refresh`: Stage 8 Android WorkManager scheduling,
+  background eligibility, local snapshot staleness/low-quota/failure checks,
+  notify-only fallback, last-run metadata, and Settings/Debug UI. It does not
+  depend on WebView.
+- `features/notifications`: Stage 8 local notification rules, cooldown
+  metadata, permission status, and local notification adapter. It does not
+  depend on WebView.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -107,6 +115,9 @@ Current keys:
 - `settings.app_settings.v1`
 - `extraction.last_page_text.v1`
 - `refresh.last_manual_result.v1`
+- `background_refresh.settings.v1`
+- `background_refresh.last_result.v1`
+- `notifications.metadata.v1`
 
 Snapshot history is newest-first and capped at 100 records.
 
@@ -260,6 +271,60 @@ The controller starts its timer only when settings are enabled and lifecycle is
 It never opens a WebView page, logs in, reads cookies/tokens/storage, reads
 HTML, uploads data, or parses outside the Stage 6 manual refresh use case.
 
+## Background Refresh Feature
+
+The background refresh feature owns Stage 8 Android background orchestration:
+
+- `BackgroundRefreshMode`: `disabled`, `notifyOnly`, and
+  `backgroundSafeDataSourceOnly`.
+- `BackgroundRefreshSettings`: mode, WorkManager check interval, stale-data
+  threshold, notification settings, minimum run spacing, and update time.
+- `BackgroundRefreshEligibility`: pure Dart result for allowed, notify-only,
+  disabled, no-safe-datasource, cooldown, system constraint, and failed cases.
+- `EvaluateBackgroundRefreshEligibility`: pure rule evaluator for settings,
+  local state, datasource availability, notification permission status, and
+  cooldown.
+- `RunBackgroundRefreshCheck`: safe local check use case. It reads app-owned
+  snapshot/settings/metadata only and calls notification rules.
+- `LocalBackgroundRefreshDataSource`: app-owned storage adapter. It strips
+  `rawDebugText`, replaces account labels, and reads shallow manual refresh
+  failure metadata only.
+- `WorkmanagerBackgroundTaskDataSource`: thin WorkManager schedule/cancel
+  wrapper. It passes only a non-sensitive purpose string to tasks.
+- `BackgroundTaskDispatcher`: Android background isolate entry point that
+  rebuilds only storage, background refresh, and notification dependencies.
+- `BackgroundRefreshSettingsController`,
+  `BackgroundRefreshSettingsSection`, and `BackgroundRefreshStatusCard`:
+  Settings/Debug UI.
+
+`background_refresh` intentionally does not import auth, extraction, parser, or
+WebView data sources. It cannot open pages, inject JavaScript, read cookies,
+read browser storage, read HTML, or read page text.
+
+`backgroundSafeDataSourceOnly` is an architectural placeholder. It is reserved
+for a future official API, desktop agent, or browser extension sync adapter. The
+current no-op adapter reports unavailable, causing the use case to downgrade to
+notify-only.
+
+## Notifications Feature
+
+The notifications feature owns Stage 8 local notification behavior:
+
+- `QuotaNotificationType`: stale data, low 5-hour quota, low weekly quota, low
+  credits, refresh failed, and background refresh unavailable.
+- `NotificationSettings`: local notification toggle, thresholds, refresh
+  failure reminder flag, and cooldown duration.
+- `NotificationCandidate`: fixed safe title/body/payload values.
+- `NotificationMetadata`: per-type `lastSentAt` cooldown tracking.
+- `EvaluateNotificationRules`: pure Dart rule evaluator for stale, low quota,
+  failure, unavailable datasource, and cooldown cases.
+- `LocalNotificationDataSource`: thin `flutter_local_notifications` adapter.
+- `LocalNotificationRepository`: permission, send, and metadata persistence.
+
+Notifications do not contain account email, full URL, raw page text, parser raw
+input/output, tokens, stack traces, or web-derived sensitive content. They are
+local reminders only and never trigger hidden background web refresh.
+
 ## Why Manual Refresh And Auto Refresh Are Separate
 
 Manual refresh is a user-intent boundary: the user opens a page, taps a clear
@@ -293,22 +358,27 @@ contracts expose typed entities and futures. This keeps the core quota/settings
 model reusable for future local JSON files, SQLite/Drift, an official API
 adapter, a reviewed WebView source, or desktop agents without changing widgets.
 
-## Why Background Refresh Is Still Disabled
+## Why Background Refresh Is Notify-Only
 
-Foreground-only scope keeps Stage 7 safe and testable:
+Stage 8 adds scheduling and notifications, but real web acquisition remains
+foreground-only:
 
 - User-driven WebView login only, with no app access to credentials.
 - User-triggered visible text extraction only, with no cookie or token handling.
 - Local parser only for redacted visible text.
 - User-reviewed save policy for medium confidence parsed snapshots.
 - Low-frequency foreground timer only when the app is resumed.
+- Background checks read only app-owned snapshot/settings/metadata.
+- Background-safe datasource mode downgrades to notify-only until a real safe
+  adapter exists.
 - No network parsing or uploads.
-- No hidden background refresh.
+- No hidden background WebView refresh.
 - Fast local unit and widget tests.
 - Clear UI and domain shape before security-sensitive integrations.
 - Local persistence stores mock quota data, user settings, the latest redacted
-  extracted text preview, the last manual refresh result, and policy-approved
-  parsed snapshot previews.
+  extracted text preview, the last manual refresh result, background settings,
+  notification metadata, last background result, and policy-approved parsed
+  snapshot previews.
 
 ## Future Replacements
 

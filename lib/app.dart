@@ -13,6 +13,12 @@ import 'features/auto_refresh/domain/entities/auto_refresh_policy.dart';
 import 'features/auto_refresh/domain/usecases/evaluate_auto_refresh_eligibility.dart';
 import 'features/auto_refresh/domain/usecases/run_foreground_auto_refresh.dart';
 import 'features/auto_refresh/presentation/controllers/foreground_auto_refresh_controller.dart';
+import 'features/background_refresh/data/datasources/local_background_refresh_datasource.dart';
+import 'features/background_refresh/data/datasources/workmanager_background_task_datasource.dart';
+import 'features/background_refresh/data/repositories/background_refresh_repository_impl.dart';
+import 'features/background_refresh/domain/usecases/evaluate_background_refresh_eligibility.dart';
+import 'features/background_refresh/domain/usecases/run_background_refresh_check.dart';
+import 'features/background_refresh/presentation/controllers/background_refresh_settings_controller.dart';
 import 'features/auth/presentation/controllers/webview_auth_controller.dart';
 import 'features/auth/presentation/pages/webview_login_page.dart';
 import 'features/debug/presentation/pages/debug_page.dart';
@@ -26,6 +32,11 @@ import 'features/parser/data/repositories/quota_parser_repository_impl.dart';
 import 'features/parser/domain/repositories/quota_parser_repository.dart';
 import 'features/parser/domain/usecases/save_parsed_quota_snapshot.dart';
 import 'features/parser/presentation/controllers/quota_parser_controller.dart';
+import 'features/notifications/data/datasources/local_notification_datasource.dart';
+import 'features/notifications/data/datasources/notification_metadata_datasource.dart';
+import 'features/notifications/data/repositories/local_notification_repository.dart';
+import 'features/notifications/domain/usecases/evaluate_notification_rules.dart';
+import 'features/notifications/domain/usecases/send_quota_notification.dart';
 import 'features/quota/data/datasources/local_quota_datasource.dart';
 import 'features/quota/data/datasources/mock_quota_datasource.dart';
 import 'features/quota/data/repositories/persistent_quota_repository.dart';
@@ -163,6 +174,7 @@ class _QuotaShellState extends State<QuotaShell> {
       SettingsPage(
         controller: settingsController,
         autoRefreshController: controllers.autoRefreshController,
+        backgroundRefreshController: controllers.backgroundRefreshController,
         onClearLocalData: _clearAllLocalData,
       ),
       _buildWebLoginPage(controllers),
@@ -174,6 +186,7 @@ class _QuotaShellState extends State<QuotaShell> {
         quotaParserController: controllers.quotaParserController,
         manualRefreshController: controllers.manualRefreshController,
         autoRefreshController: controllers.autoRefreshController,
+        backgroundRefreshController: controllers.backgroundRefreshController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -280,6 +293,19 @@ class _QuotaShellState extends State<QuotaShell> {
         clock: effectiveClock,
       ),
     );
+    final backgroundRefreshRepository = BackgroundRefreshRepositoryImpl(
+      localDataSource: LocalBackgroundRefreshDataSource(
+        storage: storage,
+        clock: effectiveClock,
+      ),
+      workmanagerDataSource: WorkmanagerBackgroundTaskDataSource(),
+      clock: effectiveClock,
+    );
+    final notificationRepository = LocalNotificationRepository(
+      notificationDataSource: LocalNotificationDataSource(),
+      metadataDataSource: NotificationMetadataDataSource(storage: storage),
+      clock: effectiveClock,
+    );
     final settingsController = SettingsController(
       repository: settingsRepository,
     );
@@ -321,6 +347,19 @@ class _QuotaShellState extends State<QuotaShell> {
       onSnapshotSaved: quotaController.applySavedSnapshot,
       clock: effectiveClock,
     );
+    final runBackgroundRefreshCheck = RunBackgroundRefreshCheck(
+      backgroundRepository: backgroundRefreshRepository,
+      notificationRepository: notificationRepository,
+      evaluateEligibility: const EvaluateBackgroundRefreshEligibility(),
+      evaluateNotificationRules: const EvaluateNotificationRules(),
+      sendQuotaNotification: SendQuotaNotification(notificationRepository),
+    );
+    final backgroundRefreshController = BackgroundRefreshSettingsController(
+      backgroundRepository: backgroundRefreshRepository,
+      notificationRepository: notificationRepository,
+      runBackgroundRefreshCheck: runBackgroundRefreshCheck,
+      clock: effectiveClock,
+    );
 
     final controllers = _AppControllers(
       quotaController: quotaController,
@@ -336,6 +375,7 @@ class _QuotaShellState extends State<QuotaShell> {
       ),
       manualRefreshController: manualRefreshController,
       autoRefreshController: autoRefreshController,
+      backgroundRefreshController: backgroundRefreshController,
     );
     _controllers = controllers;
 
@@ -344,6 +384,7 @@ class _QuotaShellState extends State<QuotaShell> {
       controllers.settingsController.load(),
       controllers.pageTextExtractionController.loadLastExtractedPageText(),
       controllers.manualRefreshController.loadLastResult(),
+      controllers.backgroundRefreshController.load(),
     ]);
 
     return controllers;
@@ -366,6 +407,7 @@ class _QuotaShellState extends State<QuotaShell> {
     await controllers.pageTextExtractionController.clearExtractedPageText();
     controllers.quotaParserController.clearParseResult();
     await controllers.manualRefreshController.clearLastResult();
+    await controllers.backgroundRefreshController.clear();
   }
 
   String _titleForIndex(int index) {
@@ -387,6 +429,7 @@ class _AppControllers {
     required this.quotaParserController,
     required this.manualRefreshController,
     required this.autoRefreshController,
+    required this.backgroundRefreshController,
   });
 
   final QuotaController quotaController;
@@ -396,9 +439,11 @@ class _AppControllers {
   final QuotaParserController quotaParserController;
   final ManualRefreshController manualRefreshController;
   final ForegroundAutoRefreshController autoRefreshController;
+  final BackgroundRefreshSettingsController backgroundRefreshController;
 
   void dispose() {
     autoRefreshController.dispose();
+    backgroundRefreshController.dispose();
     quotaController.dispose();
     settingsController.dispose();
     webAuthController.dispose();

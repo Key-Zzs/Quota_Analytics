@@ -47,19 +47,39 @@ Stage 6 manual refresh pipeline, and adds a mobile WebView layout fix.
 
 ## Stage 8: Android Background Refresh And Notifications
 
-Only after explicit review, add background refresh and notifications with
-minimal scheduling, clear opt-in, and no hidden login behavior.
+Implemented Android background task infrastructure, background refresh
+eligibility, notify-only fallback, local notifications, cooldown metadata, and
+Debug/Settings controls. Without an official API or background-safe datasource,
+background mode sends reminders only and never opens a hidden WebView.
 
-## Stage 9: iOS Adaptation
+## Stage 9: Android Home Screen Widget - Data Export Layer
 
-Adapt the app to iOS storage, credential, and background rules.
+Export safe local snapshot summaries for Android widgets without WebView,
+cookie, token, storage, HTML, or page text access.
 
-## Stage 10: Desktop / Wearable Clients
+## Stage 10: Android Home Screen Widget - Native Widget Shell
 
-Port the architecture to desktop and wearable clients. Treat each platform's
-storage, credentials, and background rules separately.
+Create the native Android widget shell that displays exported local data.
 
-## Stage 11: Optional Official API Adapter
+## Stage 11: Android Widget Refresh Integration
+
+Connect widget refresh actions to safe app-owned data export and foreground app
+entry points.
+
+## Stage 12: iOS Adaptation Feasibility
+
+Assess iOS storage, credential, WebView, notification, widget, and background
+rules before implementation.
+
+## Stage 13: Desktop Client / Tray Adaptation
+
+Assess desktop tray/client adaptation and local datasource boundaries.
+
+## Stage 14: Wearable Adaptation
+
+Assess wearable display and sync constraints.
+
+## Stage 15: Data Source Abstraction Upgrade
 
 Add an official API adapter only if a stable API becomes available and is
 appropriate for this use case.
@@ -67,13 +87,17 @@ appropriate for this use case.
 ## Status Checklist
 
 - [x] Stage 1: Architecture + Mock UI
-- [x] Stage 2: Local persistence
+- [x] Stage 2: Local persistence for snapshots and settings
 - [x] Stage 3: WebView login container
 - [x] Stage 4: Usage page text extraction
 - [x] Stage 5: Quota parser with confidence levels
 - [x] Stage 6: Real manual refresh flow
-- [x] Stage 7: Foreground auto refresh
-- [ ] Stage 8: Android background refresh and notifications
-- [ ] Stage 9: iOS adaptation
-- [ ] Stage 10: Desktop / wearable clients
-- [ ] Stage 11: Optional official API adapter
+- [x] Stage 7: Foreground auto refresh + WebView layout fix
+- [x] Stage 8: Android background refresh and notifications
+- [ ] Stage 9: Android home screen widget - data export layer
+- [ ] Stage 10: Android home screen widget - native widget shell
+- [ ] Stage 11: Android widget refresh integration
+- [ ] Stage 12: iOS adaptation feasibility
+- [ ] Stage 13: Desktop client / tray adaptation
+- [ ] Stage 14: Wearable adaptation
+- [ ] Stage 15: Data source abstraction upgrade

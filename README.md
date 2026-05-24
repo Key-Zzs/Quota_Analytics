@@ -8,16 +8,17 @@ usage limits, refresh windows, remaining quota, and quota status.
 This is an unofficial independent project. It is not affiliated with, endorsed
 by, or maintained by OpenAI, ChatGPT, or Codex.
 
-Stage 7 connects the user-triggered WebView visible-text extraction, local
-redaction, local parser, confidence policy, and local snapshot persistence into
-a real manual refresh flow plus foreground-only auto refresh. Extraction still
-reads only `document.body.innerText`; parsing and save policy remain local. The
-app still does not read cookies, tokens, passwords, browser storage contents,
-local browser profiles, credentials, HTML, or an official quota API.
+Stage 8 adds Android background task infrastructure and local notifications,
+but background work is safety-gated. Without an official API or
+background-safe data source, background mode uses notify-only behavior based on
+the last saved local snapshot and refresh metadata. Real quota refresh still
+requires foreground WebView visible-text extraction. The app still does not
+read cookies, tokens, passwords, browser storage contents, local browser
+profiles, credentials, HTML, or an official quota API.
 
 ## Current Status
 
-Stage 7: foreground auto refresh and mobile WebView layout fix are complete.
+Stage 8: Android background refresh and notifications are complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
@@ -45,6 +46,17 @@ Stage 7: foreground auto refresh and mobile WebView layout fix are complete.
 - Foreground auto refresh is off by default, runs only while the app is
   resumed, uses the current already-open WebView page only, and reuses the
   manual refresh pipeline.
+- Android background refresh is safety-gated.
+- Without an official API or background-safe datasource, background mode uses
+  notify-only behavior.
+- Background checks read only app-owned local snapshot/settings/metadata.
+- Local notifications can remind the user when saved quota data is stale, quota
+  is low, or the last refresh failed.
+- Notification cooldown metadata prevents repeated reminders.
+- No hidden background WebView scraping.
+- No background cookie/token/storage access.
+- No background HTML or page text extraction.
+- No data upload.
 - WebView status shows sanitized URL, title, loading progress, navigation time,
   last error, and conservative auth status.
 - The app still does not read cookie/token values.
@@ -52,11 +64,11 @@ Stage 7: foreground auto refresh and mobile WebView layout fix are complete.
 - The app still does not extract HTML.
 - The app still does not upload page text, parser input, parser output, logs, or
   snapshots.
-- The app still does not run background refresh.
+- The app still does not run background WebView refresh.
 - Settings page with explicit save and clear-local-data.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
-  Stage 5 parser, Stage 6 manual refresh, and Stage 7 foreground auto refresh
-  safety flags.
+  Stage 5 parser, Stage 6 manual refresh, Stage 7 foreground auto refresh, and
+  Stage 8 background refresh/notification safety flags.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -135,6 +147,16 @@ orchestration through `AutoRefreshPolicy`,
 `ForegroundAutoRefreshController`, and `AutoRefreshStatusCard`. It reuses the
 manual refresh pipeline and does not read WebView JavaScript directly.
 
+The background refresh feature owns the Stage 8 Android WorkManager
+infrastructure, `BackgroundRefreshEligibility`, notify-only local snapshot
+checks, last background run metadata, and Settings/Debug controls. It does not
+depend on WebView, extraction, parser, cookies, tokens, browser storage, HTML,
+or page text.
+
+The notifications feature owns local notification settings, safe fixed
+notification content, per-type cooldown metadata, notification permission
+status, and the `flutter_local_notifications` adapter.
+
 Future source placeholders include:
 
 - `WebViewQuotaDataSource` for a future reviewed usage extraction stage.
@@ -151,7 +173,8 @@ summarized in [docs/stage3_report.md](docs/stage3_report.md), Stage 4 is
 summarized in [docs/stage4_report.md](docs/stage4_report.md), Stage 5 is
 summarized in [docs/stage5_report.md](docs/stage5_report.md), Stage 6 is
 summarized in [docs/stage6_report.md](docs/stage6_report.md), and Stage 7 is
-summarized in [docs/stage7_report.md](docs/stage7_report.md).
+summarized in [docs/stage7_report.md](docs/stage7_report.md). Stage 8 is
+summarized in [docs/stage8_report.md](docs/stage8_report.md).
 
 ## Project Structure
 
@@ -172,15 +195,18 @@ summarized in [docs/stage7_report.md](docs/stage7_report.md).
 │   ├── stage4_report.md
 │   ├── stage5_report.md
 │   ├── stage6_report.md
-│   └── stage7_report.md
+│   ├── stage7_report.md
+│   └── stage8_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
 │   ├── features/
 │   │   ├── auth/
 │   │   ├── auto_refresh/
+│   │   ├── background_refresh/
 │   │   ├── debug/
 │   │   ├── extraction/
+│   │   ├── notifications/
 │   │   ├── quota/
 │   │   ├── parser/
 │   │   ├── refresh/
@@ -227,12 +253,14 @@ flutter run
 
 ## Development Notes
 
+- Stage 8 background work is notify-only unless a future background-safe data
+  source is added.
 - Stage 7 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
-- Stage 7 persists mock quota data/settings, the last redacted extracted text
-  preview, the last manual refresh result, and policy-approved parsed
-  snapshots.
-- Do not add background refresh, notification permissions, storage reads, or
+- Stage 8 persists mock quota data/settings, the last redacted extracted text
+  preview, the last manual refresh result, background settings, notification
+  metadata, the last background result, and policy-approved parsed snapshots.
+- Do not add real background web refresh, hidden WebViews, credential reads, or
   network upload without a new security review.
 - Do not store credentials.
 
@@ -244,11 +272,15 @@ flutter run
 - [x] Stage 4: Usage page text extraction
 - [x] Stage 5: Quota parser with confidence levels
 - [x] Stage 6: Real manual refresh flow
-- [x] Stage 7: Foreground auto refresh
-- [ ] Stage 8: Android background refresh and notifications
-- [ ] Stage 9: iOS adaptation
-- [ ] Stage 10: Desktop / wearable clients
-- [ ] Stage 11: Optional official API adapter if a stable API becomes available
+- [x] Stage 7: Foreground auto refresh + WebView layout fix
+- [x] Stage 8: Android background refresh and notifications
+- [ ] Stage 9: Android home screen widget - data export layer
+- [ ] Stage 10: Android home screen widget - native widget shell
+- [ ] Stage 11: Android widget refresh integration
+- [ ] Stage 12: iOS adaptation feasibility
+- [ ] Stage 13: Desktop client / tray adaptation
+- [ ] Stage 14: Wearable adaptation
+- [ ] Stage 15: Data source abstraction upgrade
 
 ## Security And Privacy
 
@@ -258,18 +290,20 @@ flutter run
 - No localStorage or sessionStorage reading.
 - No WebView HTML extraction.
 - Manual WebView text extraction reads only `document.body.innerText`.
+- Android background work does not access WebView, cookies, tokens,
+  localStorage, sessionStorage, HTML, or page text.
 - Extracted text remains local and only a redacted preview is saved.
 - Parser works on redacted visible text only.
 - Parser results are local and may be inaccurate.
 - Low-confidence parser results are not saveable as snapshots.
 - Manual refresh requires a user tap.
 - Foreground auto refresh is opt-in and foreground-only.
-- No background refresh.
-- No WorkManager.
+- Background WorkManager checks are notify-only and safety-gated.
+- No background WebView refresh.
 - No analytics SDK by default.
 - Debug extracted text should be treated as sensitive even after redaction.
 
-See [docs/security.md](docs/security.md) for the Stage 7 security boundary.
+See [docs/security.md](docs/security.md) for the Stage 8 security boundary.
 
 ## License
 

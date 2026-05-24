@@ -6,9 +6,12 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/security/sensitive_data_policy.dart';
 import '../../../../core/utils/date_time_format.dart';
 import '../../../auto_refresh/presentation/controllers/foreground_auto_refresh_controller.dart';
+import '../../../background_refresh/presentation/controllers/background_refresh_settings_controller.dart';
+import '../../../background_refresh/presentation/widgets/background_refresh_status_card.dart';
 import '../../../auth/presentation/controllers/webview_auth_controller.dart';
 import '../../../extraction/presentation/controllers/page_text_extraction_controller.dart';
 import '../../../extraction/presentation/widgets/extracted_text_preview.dart';
+import '../../../notifications/presentation/widgets/notification_status_card.dart';
 import '../../../parser/presentation/controllers/quota_parser_controller.dart';
 import '../../../quota/domain/entities/parser_confidence.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
@@ -27,6 +30,7 @@ class DebugPage extends StatelessWidget {
     required this.quotaParserController,
     required this.manualRefreshController,
     required this.autoRefreshController,
+    required this.backgroundRefreshController,
     required this.onClearLocalData,
   });
 
@@ -37,6 +41,7 @@ class DebugPage extends StatelessWidget {
   final QuotaParserController quotaParserController;
   final ManualRefreshController manualRefreshController;
   final ForegroundAutoRefreshController autoRefreshController;
+  final BackgroundRefreshSettingsController backgroundRefreshController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -50,6 +55,7 @@ class DebugPage extends StatelessWidget {
         quotaParserController,
         manualRefreshController,
         autoRefreshController,
+        backgroundRefreshController,
       ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
@@ -406,7 +412,10 @@ class DebugPage extends StatelessWidget {
                   label: 'WebView current sanitized URL',
                   value: webAuthController.currentUrl,
                 ),
-                const _DebugRow(label: 'No background refresh', value: 'true'),
+                const _DebugRow(
+                  label: 'No background WebView refresh',
+                  value: 'true',
+                ),
                 const _DebugRow(
                   label: 'No cookie/token/storage access',
                   value: 'true',
@@ -414,6 +423,15 @@ class DebugPage extends StatelessWidget {
                 const _DebugRow(label: 'No HTML extraction', value: 'true'),
                 const _DebugRow(label: 'No network upload', value: 'true'),
               ],
+            ),
+            const SizedBox(height: 12),
+            BackgroundRefreshStatusCard(
+              controller: backgroundRefreshController,
+            ),
+            const SizedBox(height: 12),
+            NotificationStatusCard(
+              permissionStatus: backgroundRefreshController.permissionStatus,
+              metadata: backgroundRefreshController.notificationMetadata,
             ),
             const SizedBox(height: 12),
             _DebugCard(
@@ -451,7 +469,9 @@ class DebugPage extends StatelessWidget {
                 Text('Local quota parsing from redacted text only'),
                 Text('Manual refresh requires a user tap'),
                 Text('Foreground auto refresh reuses manual refresh pipeline'),
-                Text('No background refresh'),
+                Text('Background refresh is safety-gated notify-only'),
+                Text('No hidden background WebView extraction'),
+                Text('No background cookie/token/storage access'),
                 SizedBox(height: 8),
                 Text(AppConstants.stageNotice),
               ],
