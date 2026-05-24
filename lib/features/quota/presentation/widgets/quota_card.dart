@@ -39,7 +39,7 @@ class QuotaCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${window.used ?? '--'} / ${window.limit ?? '--'} used',
+              'Remaining ratio',
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),

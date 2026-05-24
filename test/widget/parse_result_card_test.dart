@@ -70,5 +70,12 @@ Used 30 of 100
 
     expect(find.text('5-hour window'), findsOneWidget);
     expect(find.text('Weekly window'), findsOneWidget);
+    expect(find.text('Remaining ratio'), findsNWidgets(2));
+    expect(find.text('Reset time'), findsNWidgets(2));
+    expect(find.text('Used'), findsNothing);
+    expect(find.text('Limit'), findsNothing);
+    expect(find.text('Remaining'), findsNothing);
+    expect(find.text('Reset at'), findsNothing);
+    expect(find.text('Reset text'), findsNothing);
   });
 }

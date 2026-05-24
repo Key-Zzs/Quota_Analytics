@@ -26,17 +26,13 @@ class ParsedWindowCard extends StatelessWidget {
           children: [
             Text(window.type.label, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
-            _Field(label: 'Used', value: _intValue(window.used)),
-            _Field(label: 'Limit', value: _intValue(window.limit)),
-            _Field(label: 'Remaining', value: _intValue(window.remaining)),
             _Field(
               label: 'Remaining ratio',
               value: window.remainingRatio == null
                   ? 'unknown'
                   : '${(window.remainingRatio! * 100).round()}%',
             ),
-            _Field(label: 'Reset at', value: formatDateTime(window.resetAt)),
-            _Field(label: 'Reset text', value: window.resetText ?? 'unknown'),
+            _Field(label: 'Reset time', value: _resetTimeValue(window)),
             if (window.evidenceLabels.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text('Evidence', style: theme.textTheme.labelLarge),
@@ -49,7 +45,12 @@ class ParsedWindowCard extends StatelessWidget {
     );
   }
 
-  String _intValue(int? value) => value?.toString() ?? 'unknown';
+  String _resetTimeValue(ParsedQuotaWindow window) {
+    if (window.resetAt != null) {
+      return formatDateTime(window.resetAt);
+    }
+    return window.resetText ?? 'unknown';
+  }
 }
 
 class _Field extends StatelessWidget {

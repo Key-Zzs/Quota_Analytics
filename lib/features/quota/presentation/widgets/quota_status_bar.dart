@@ -27,7 +27,9 @@ class QuotaStatusBar extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          percentage == null ? 'Remaining unknown' : '$percentage% remaining',
+          percentage == null
+              ? 'Remaining ratio unknown'
+              : 'Remaining ratio: $percentage%',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
