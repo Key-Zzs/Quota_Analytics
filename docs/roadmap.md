@@ -111,8 +111,8 @@ appropriate for this use case.
 - [x] Stage 7: Foreground auto refresh + WebView layout fix
 - [x] Stage 8: Android background refresh and notifications
 - [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
-- [x] Stage 8.2: Quota page usage refresh
-- [ ] Stage 9: Android home screen widget - data export layer
+- [x] Stage 8.2: Quota page usage refresh pipeline
+- [x] Stage 9: Android home screen widget - data export layer
 - [ ] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration
 - [ ] Stage 12: iOS adaptation feasibility

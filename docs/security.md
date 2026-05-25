@@ -1,5 +1,36 @@
 # Security
 
+## Stage 9 Widget Export Boundary
+
+Stage 9 exports a small `WidgetSnapshotSummary` from an already-saved
+`QuotaSnapshot` for future Android home screen widget display. The export layer
+does not implement a native widget UI and does not run background refresh.
+
+Widget export stores only display-safe summary fields: remaining ratios, reset
+times/text, credits remaining, last updated time, source, parser confidence,
+stale/status labels, safe error labels, schema version, and export metadata.
+
+Stage 9 widget export does not save:
+
+- Raw page text.
+- Redacted full page text.
+- Parser input.
+- Parser raw evidence text.
+- Parser matched signal text.
+- `document.body.innerText`.
+- Cookies.
+- Tokens.
+- `localStorage` or `sessionStorage`.
+- Authorization headers.
+- Full URL query or fragment.
+- Account email or account label.
+- Sensitive debug logs.
+
+Future widgets must read only the exported summary. They must not execute
+WebView, login, parser, extraction, cookie/token/storage access, hidden page
+loads, or background scraping. Widget taps should open the main app rather than
+attempting background web refresh.
+
 ## Stage 8.2 Quota Page Usage Refresh Boundary
 
 Stage 8.2 changes the Quota page refresh button from a mock datasource shortcut

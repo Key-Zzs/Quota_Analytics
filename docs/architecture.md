@@ -10,12 +10,13 @@ boundary.
 Stage 8.1 adds foreground-only reload-before-refresh for manual and foreground
 auto refresh. Stage 8.2 routes the Quota page refresh action through the
 visible Usage page and the manual refresh pipeline instead of the mock refresh
-path. These stages do not implement cookies, tokens, storage reads, HTML
-extraction, backend calls, hidden WebView scraping, or true background web
-refresh. The WebView login container, text extraction flow, parser, manual
-refresh orchestration, foreground auto refresh orchestration, background
-local-check orchestration, notifications, and quota persistence remain
-intentionally separate.
+path. Stage 9 adds a safe widget summary export layer for future Android home
+screen widgets. These stages do not implement cookies, tokens, storage reads,
+HTML extraction, backend calls, hidden WebView scraping, true background web
+refresh, or native widget UI. The WebView login container, text extraction
+flow, parser, manual refresh orchestration, foreground auto refresh
+orchestration, background local-check orchestration, notifications, widget
+summary export, and quota persistence remain intentionally separate.
 
 ## Layers
 
@@ -51,6 +52,10 @@ The app uses a feature-first Clean Architecture layout:
 - `features/notifications`: Stage 8 local notification rules, cooldown
   metadata, permission status, and local notification adapter. It does not
   depend on WebView.
+- `features/widget_export`: Stage 9 safe summary schema, mapper, storage,
+  repository, export use cases, repository wrapper, controller, and Debug UI.
+  It depends on already-created `QuotaSnapshot` data and does not depend on
+  WebView, extraction, parser input, cookies, tokens, or browser storage.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -115,6 +120,8 @@ The persistence layer is intentionally small:
   extracted text preview.
 - `LocalManualRefreshDataSource`: serializes/deserializes the latest manual
   refresh result without raw unredacted page text.
+- `LocalWidgetSummaryDataSource`: serializes/deserializes the latest
+  display-safe widget summary and export metadata.
 
 Current keys:
 
@@ -126,8 +133,45 @@ Current keys:
 - `background_refresh.settings.v1`
 - `background_refresh.last_result.v1`
 - `notifications.metadata.v1`
+- `widget.latest_summary_json`
+- `widget.last_exported_at`
+- `widget.export_status`
+- `widget.last_export_error`
 
 Snapshot history is newest-first and capped at 100 records.
+
+## Widget Export Feature
+
+The widget export feature owns the Stage 9 data export layer:
+
+- `WidgetSnapshotSummary`: stable schema version `1` for display-safe widget
+  fields.
+- `QuotaSnapshotToWidgetSummaryMapper`: maps the latest `QuotaSnapshot` to
+  remaining ratios, reset times/text, credits, last-updated time, source,
+  parser confidence, stale status, and display labels.
+- `WidgetSummaryRepository`: domain contract for export, read, metadata, and
+  clear operations.
+- `WidgetSummaryRepositoryImpl`: best-effort persistence wrapper around
+  `LocalWidgetSummaryDataSource`.
+- `ExportWidgetSummary`, `GetWidgetSummary`, and `ClearWidgetSummary`: use
+  cases for app and Debug controls.
+- `WidgetExportingQuotaRepository`: decorates `QuotaRepository` so successful
+  latest snapshot saves also export a widget summary without changing snapshot
+  contents.
+- `WidgetExportController`, `WidgetExportStatusCard`, and
+  `WidgetSummaryPreviewCard`: Debug UI for export state and manual test
+  actions.
+
+Future Android widget code should read only `WidgetSnapshotSummary`, not the
+full `QuotaSnapshot`. That keeps native widget display independent of
+`accountLabel`, `rawDebugText`, parser internals, WebView state, extraction
+cache, cookies, tokens, browser storage, and page text.
+
+Stage 10 can reuse the same JSON schema. If native Kotlin cannot conveniently
+read Flutter `shared_preferences` in the final Android packaging, the app can
+mirror the same summary through a platform bridge to Android-native
+SharedPreferences or a small app-owned file without changing the widget-facing
+schema.
 
 ## Settings Repository
 

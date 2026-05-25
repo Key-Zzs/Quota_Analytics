@@ -19,6 +19,8 @@ import '../../../quota/domain/entities/quota_source.dart';
 import '../../../quota/presentation/controllers/quota_controller.dart';
 import '../../../refresh/presentation/controllers/manual_refresh_controller.dart';
 import '../../../settings/presentation/controllers/settings_controller.dart';
+import '../../../widget_export/presentation/controllers/widget_export_controller.dart';
+import '../../../widget_export/presentation/widgets/widget_export_status_card.dart';
 
 class DebugPage extends StatelessWidget {
   const DebugPage({
@@ -31,6 +33,7 @@ class DebugPage extends StatelessWidget {
     required this.manualRefreshController,
     required this.autoRefreshController,
     required this.backgroundRefreshController,
+    required this.widgetExportController,
     required this.onClearLocalData,
   });
 
@@ -42,6 +45,7 @@ class DebugPage extends StatelessWidget {
   final ManualRefreshController manualRefreshController;
   final ForegroundAutoRefreshController autoRefreshController;
   final BackgroundRefreshSettingsController backgroundRefreshController;
+  final WidgetExportController widgetExportController;
   final Future<void> Function() onClearLocalData;
 
   @override
@@ -56,6 +60,7 @@ class DebugPage extends StatelessWidget {
         manualRefreshController,
         autoRefreshController,
         backgroundRefreshController,
+        widgetExportController,
       ]),
       builder: (context, _) {
         final snapshot = controller.snapshot;
@@ -514,6 +519,11 @@ class DebugPage extends StatelessWidget {
               metadata: backgroundRefreshController.notificationMetadata,
             ),
             const SizedBox(height: 12),
+            WidgetExportStatusCard(
+              controller: widgetExportController,
+              latestSnapshot: snapshot,
+            ),
+            const SizedBox(height: 12),
             _DebugCard(
               title: 'Recent snapshots',
               children: [
@@ -589,7 +599,7 @@ class DebugPage extends StatelessWidget {
         return AlertDialog(
           title: const Text('Clear local data?'),
           content: const Text(
-            'This removes only this app\'s saved mock quota snapshots, settings, redacted extracted text preview, parser result, and last manual refresh result.',
+            'This removes only this app\'s saved mock quota snapshots, widget summary export, settings, redacted extracted text preview, parser result, and last manual refresh result.',
           ),
           actions: [
             TextButton(

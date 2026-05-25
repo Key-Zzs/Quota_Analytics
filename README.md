@@ -12,7 +12,8 @@ Stage 8 adds Android background task infrastructure and local notifications,
 but background work is safety-gated. Stage 8.1 adds optional foreground
 reload-before-refresh for manual and foreground auto refresh. Stage 8.2 routes
 the Quota page refresh action through the visible Usage page and manual refresh
-pipeline instead of the mock refresh path. Without an official API or
+pipeline instead of the mock refresh path. Stage 9 exports a safe local widget
+summary for future Android home screen widgets. Without an official API or
 background-safe data source, background mode uses notify-only behavior based on
 the last saved local snapshot and refresh metadata. Real quota refresh still
 requires foreground WebView visible-text extraction. The app still does not
@@ -21,10 +22,14 @@ profiles, credentials, HTML, or an official quota API.
 
 ## Current Status
 
-Stage 8.2: Quota page Usage refresh is complete.
+Stage 9: widget data export layer is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
+- App exports a safe `WidgetSnapshotSummary` from latest quota data.
+- Widget summary contains only display-safe quota fields.
+- No Android home screen widget UI yet.
+- No cookie/token/raw page text is stored for widgets.
 - Quota app-bar refresh opens the visible Usage page, refreshes from the current
   page, and saves high-confidence manual results for that tap.
 - Last mock snapshot restore on startup.
@@ -66,12 +71,16 @@ Stage 8.2: Quota page Usage refresh is complete.
 - Background refresh remains notify-only and never uses hidden WebView
   scraping.
 - Background checks read only app-owned local snapshot/settings/metadata.
+- Widget export reads only app-owned `QuotaSnapshot` fields and writes a reduced
+  display summary.
 - Local notifications can remind the user when saved quota data is stale, quota
   is low, or the last refresh failed.
 - Notification cooldown metadata prevents repeated reminders.
 - No hidden background WebView scraping.
 - No hidden WebView.
 - No background cookie/token/storage access.
+- No widget cookie/token/storage access.
+- No widget raw page text, parser input, or account email storage.
 - No background HTML or page text extraction.
 - No cookie/token/storage access for reload-before-refresh.
 - No HTML extraction.
@@ -88,7 +97,7 @@ Stage 8.2: Quota page Usage refresh is complete.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
   Stage 5 parser, Stage 6 manual refresh, Stage 7 foreground auto refresh, and
   Stage 8 background refresh/notification safety flags, plus Stage 8.1 reload
-  status and Stage 8.2 Quota refresh behavior.
+  status, Stage 8.2 Quota refresh behavior, and Stage 9 widget export status.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -200,7 +209,8 @@ summarized in [docs/stage6_report.md](docs/stage6_report.md), and Stage 7 is
 summarized in [docs/stage7_report.md](docs/stage7_report.md). Stage 8 is
 summarized in [docs/stage8_report.md](docs/stage8_report.md). Stage 8.1 is
 summarized in [docs/stage8_1_report.md](docs/stage8_1_report.md). Stage 8.2 is
-summarized in [docs/stage8_2_report.md](docs/stage8_2_report.md).
+summarized in [docs/stage8_2_report.md](docs/stage8_2_report.md). Stage 9 is
+summarized in [docs/stage9_report.md](docs/stage9_report.md).
 
 ## Project Structure
 
@@ -224,7 +234,8 @@ summarized in [docs/stage8_2_report.md](docs/stage8_2_report.md).
 │   ├── stage7_report.md
 │   ├── stage8_report.md
 │   ├── stage8_1_report.md
-│   └── stage8_2_report.md
+│   ├── stage8_2_report.md
+│   └── stage9_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -238,7 +249,8 @@ summarized in [docs/stage8_2_report.md](docs/stage8_2_report.md).
 │   │   ├── quota/
 │   │   ├── parser/
 │   │   ├── refresh/
-│   │   └── settings/
+│   │   ├── settings/
+│   │   └── widget_export/
 │   ├── main.dart
 │   └── platform_placeholders/
 ├── test/
@@ -288,11 +300,15 @@ flutter run
   extraction pipeline.
 - Stage 8.2 Quota refresh is user-triggered, foreground-only, and uses the
   visible Usage page before the same manual extraction pipeline.
+- Stage 9 widget export writes only a display-safe summary for future native
+  widget UI. It does not add Android widget UI, background widget refresh, or
+  WebView/parser/login access from widgets.
 - Stage 7 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
 - Stage 8 persists mock quota data/settings, the last redacted extracted text
   preview, the last manual refresh result, background settings, notification
-  metadata, the last background result, and policy-approved parsed snapshots.
+  metadata, the last background result, widget summary export metadata, and
+  policy-approved parsed snapshots.
 - Do not add real background web refresh, hidden WebViews, credential reads, or
   network upload without a new security review.
 - Do not store credentials.
@@ -308,8 +324,8 @@ flutter run
 - [x] Stage 7: Foreground auto refresh + WebView layout fix
 - [x] Stage 8: Android background refresh and notifications
 - [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
-- [x] Stage 8.2: Quota page usage refresh
-- [ ] Stage 9: Android home screen widget - data export layer
+- [x] Stage 8.2: Quota page usage refresh pipeline
+- [x] Stage 9: Android home screen widget - data export layer
 - [ ] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration
 - [ ] Stage 12: iOS adaptation feasibility
@@ -327,6 +343,8 @@ flutter run
 - Manual WebView text extraction reads only `document.body.innerText`.
 - Android background work does not access WebView, cookies, tokens,
   localStorage, sessionStorage, HTML, or page text.
+- Widget export does not store raw page text, parser input, cookies, tokens,
+  localStorage, sessionStorage, account email, or full URL query/fragment.
 - Extracted text remains local and only a redacted preview is saved.
 - Parser works on redacted visible text only.
 - Parser results are local and may be inaccurate.
@@ -338,7 +356,7 @@ flutter run
 - No analytics SDK by default.
 - Debug extracted text should be treated as sensitive even after redaction.
 
-See [docs/security.md](docs/security.md) for the Stage 8 security boundary.
+See [docs/security.md](docs/security.md) for the current security boundary.
 
 ## License
 

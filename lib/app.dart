@@ -57,6 +57,14 @@ import 'features/settings/data/repositories/local_settings_repository.dart';
 import 'features/settings/domain/repositories/settings_repository.dart';
 import 'features/settings/presentation/controllers/settings_controller.dart';
 import 'features/settings/presentation/pages/settings_page.dart';
+import 'features/widget_export/data/datasources/local_widget_summary_datasource.dart';
+import 'features/widget_export/data/mappers/quota_snapshot_to_widget_summary_mapper.dart';
+import 'features/widget_export/data/repositories/widget_exporting_quota_repository.dart';
+import 'features/widget_export/data/repositories/widget_summary_repository_impl.dart';
+import 'features/widget_export/domain/usecases/clear_widget_summary.dart';
+import 'features/widget_export/domain/usecases/export_widget_summary.dart';
+import 'features/widget_export/domain/usecases/get_widget_summary.dart';
+import 'features/widget_export/presentation/controllers/widget_export_controller.dart';
 
 class QuotaAnalyticsApp extends StatelessWidget {
   const QuotaAnalyticsApp({
@@ -191,6 +199,7 @@ class _QuotaShellState extends State<QuotaShell> {
         manualRefreshController: controllers.manualRefreshController,
         autoRefreshController: controllers.autoRefreshController,
         backgroundRefreshController: controllers.backgroundRefreshController,
+        widgetExportController: controllers.widgetExportController,
         onClearLocalData: _clearAllLocalData,
       ),
     ];
@@ -386,20 +395,29 @@ class _QuotaShellState extends State<QuotaShell> {
   Future<_AppControllers> _createControllers() async {
     final effectiveClock = widget.clock ?? const SystemClock();
     final storage = await _createStorageIfNeeded();
-    final quotaRepository =
+    final widgetSummaryRepository = WidgetSummaryRepositoryImpl(
+      dataSource: LocalWidgetSummaryDataSource(storage: storage),
+      mapper: const QuotaSnapshotToWidgetSummaryMapper(),
+      clock: effectiveClock,
+    );
+    final baseQuotaRepository =
         widget.quotaRepository ??
         PersistentQuotaRepository(
           mockDataSource: MockQuotaDataSource(clock: effectiveClock),
           localDataSource: LocalQuotaDataSource(
-            storage: storage!,
+            storage: storage,
             clock: effectiveClock,
           ),
         );
+    final quotaRepository = WidgetExportingQuotaRepository(
+      delegate: baseQuotaRepository,
+      widgetRepository: widgetSummaryRepository,
+    );
     final settingsRepository =
         widget.settingsRepository ??
         LocalSettingsRepository(
           dataSource: LocalSettingsDataSource(
-            storage: storage!,
+            storage: storage,
             clock: effectiveClock,
           ),
           clock: effectiveClock,
@@ -407,7 +425,7 @@ class _QuotaShellState extends State<QuotaShell> {
     final pageTextExtractionRepository =
         widget.pageTextExtractionRepository ??
         PageTextExtractionRepositoryImpl(
-          localDataSource: LocalExtractedTextDataSource(storage: storage!),
+          localDataSource: LocalExtractedTextDataSource(storage: storage),
           clock: effectiveClock,
         );
     final quotaParserRepository =
@@ -415,7 +433,7 @@ class _QuotaShellState extends State<QuotaShell> {
         QuotaParserRepositoryImpl(parser: RegexQuotaParser());
     final manualRefreshRepository = ManualRefreshRepositoryImpl(
       localDataSource: LocalManualRefreshDataSource(
-        storage: storage!,
+        storage: storage,
         clock: effectiveClock,
       ),
     );
@@ -501,6 +519,11 @@ class _QuotaShellState extends State<QuotaShell> {
       runBackgroundRefreshCheck: runBackgroundRefreshCheck,
       clock: effectiveClock,
     );
+    final widgetExportController = WidgetExportController(
+      exportWidgetSummary: ExportWidgetSummary(widgetSummaryRepository),
+      getWidgetSummary: GetWidgetSummary(widgetSummaryRepository),
+      clearWidgetSummary: ClearWidgetSummary(widgetSummaryRepository),
+    );
 
     final controllers = _AppControllers(
       clock: effectiveClock,
@@ -518,21 +541,23 @@ class _QuotaShellState extends State<QuotaShell> {
       manualRefreshController: manualRefreshController,
       autoRefreshController: autoRefreshController,
       backgroundRefreshController: backgroundRefreshController,
+      widgetExportController: widgetExportController,
     );
     _controllers = controllers;
 
+    await controllers.quotaController.loadLatestSnapshot();
     await Future.wait([
-      controllers.quotaController.loadLatestSnapshot(),
       controllers.settingsController.load(),
       controllers.pageTextExtractionController.loadLastExtractedPageText(),
       controllers.manualRefreshController.loadLastResult(),
       controllers.backgroundRefreshController.load(),
     ]);
+    await controllers.widgetExportController.load();
 
     return controllers;
   }
 
-  Future<JsonStorage?> _createStorageIfNeeded() async {
+  Future<JsonStorage> _createStorageIfNeeded() async {
     if (widget.quotaRepository != null && widget.settingsRepository != null) {
       return MemoryJsonStorage();
     }
@@ -550,6 +575,7 @@ class _QuotaShellState extends State<QuotaShell> {
     controllers.quotaParserController.clearParseResult();
     await controllers.manualRefreshController.clearLastResult();
     await controllers.backgroundRefreshController.clear();
+    await controllers.widgetExportController.clearSummary();
   }
 
   String _titleForIndex(int index) {
@@ -573,6 +599,7 @@ class _AppControllers {
     required this.manualRefreshController,
     required this.autoRefreshController,
     required this.backgroundRefreshController,
+    required this.widgetExportController,
   });
 
   final Clock clock;
@@ -584,10 +611,12 @@ class _AppControllers {
   final ManualRefreshController manualRefreshController;
   final ForegroundAutoRefreshController autoRefreshController;
   final BackgroundRefreshSettingsController backgroundRefreshController;
+  final WidgetExportController widgetExportController;
 
   void dispose() {
     autoRefreshController.dispose();
     backgroundRefreshController.dispose();
+    widgetExportController.dispose();
     quotaController.dispose();
     settingsController.dispose();
     webAuthController.dispose();

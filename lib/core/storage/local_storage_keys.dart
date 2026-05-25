@@ -9,6 +9,10 @@ class LocalStorageKeys {
   static const backgroundRefreshSettings = 'background_refresh.settings.v1';
   static const backgroundRefreshResult = 'background_refresh.last_result.v1';
   static const notificationMetadata = 'notifications.metadata.v1';
+  static const widgetLatestSummaryJson = 'widget.latest_summary_json';
+  static const widgetLastExportedAt = 'widget.last_exported_at';
+  static const widgetExportStatus = 'widget.export_status';
+  static const widgetLastExportError = 'widget.last_export_error';
 
   static const allAppKeys = <String>[
     quotaLatestSnapshot,
@@ -19,5 +23,9 @@ class LocalStorageKeys {
     backgroundRefreshSettings,
     backgroundRefreshResult,
     notificationMetadata,
+    widgetLatestSummaryJson,
+    widgetLastExportedAt,
+    widgetExportStatus,
+    widgetLastExportError,
   ];
 }
