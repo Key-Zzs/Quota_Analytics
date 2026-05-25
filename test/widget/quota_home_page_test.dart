@@ -24,13 +24,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.textContaining('Stage 8.1:'), findsOneWidget);
+    expect(find.textContaining('Stage 8.2:'), findsOneWidget);
     expect(find.text('Go to Web Refresh'), findsOneWidget);
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.scrollUntilVisible(
+      find.text('Mock GPT Account'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Weekly window'), findsOneWidget);
     expect(find.text('Mock GPT Account'), findsOneWidget);
   });
 
@@ -57,21 +60,14 @@ void main() {
     expect(find.text('Mock GPT Account'), findsOneWidget);
   });
 
-  testWidgets('refresh updates the displayed last updated time', (
+  testWidgets('quota refresh action uses the usage-page refresh entry point', (
     tester,
   ) async {
     await tester.pumpWidget(_buildInjectedApp());
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
-    await tester.pumpAndSettle();
 
-    expect(find.text('2026-01-01 12:00:00'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Refresh mock quota'));
-    await tester.pump();
-    await tester.pumpAndSettle();
-
-    expect(find.text('2026-01-01 12:01:00'), findsOneWidget);
+    expect(find.byTooltip('Refresh usage page'), findsOneWidget);
+    expect(find.byTooltip('Refresh mock quota'), findsNothing);
   });
 
   testWidgets('Settings page displays and updates refresh interval', (

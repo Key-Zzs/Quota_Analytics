@@ -1,5 +1,21 @@
 # Security
 
+## Stage 8.2 Quota Page Usage Refresh Boundary
+
+Stage 8.2 changes the Quota page refresh button from a mock datasource shortcut
+to a user-triggered foreground Usage page refresh. The action shows the WebView
+tab, opens the Usage page visibly, waits for page load/settle, and then reuses
+the existing manual refresh pipeline.
+
+For this one tap, high-confidence manual refresh results can be saved
+automatically without changing the persisted manual refresh setting. Medium
+confidence still requires confirmation and low confidence remains blocked.
+
+Stage 8.2 does not add hidden WebViews, background WebView work, automatic
+background usage-page opening, cookie/token/storage reads, HTML extraction, or
+network upload. The only page content read remains bounded visible text through
+`document.body.innerText`.
+
 ## Stage 8.1 Reload-Before-Refresh Boundary
 
 Stage 8.1 adds optional reload-before-refresh for manual refresh and

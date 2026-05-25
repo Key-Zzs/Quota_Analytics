@@ -19,6 +19,7 @@ import 'package:quota_analytics/features/refresh/data/services/webview_reload_se
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_page_state.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_result.dart';
+import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_status.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_policy.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_result.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/reload_before_refresh_status.dart';
@@ -109,6 +110,21 @@ void main() {
       );
     },
   );
+
+  test('policy override auto-saves a high confidence quota refresh', () async {
+    final harness = _Harness(now: now, reloadEnabled: false);
+
+    final saved = await harness.controller.refreshFromCurrentPage(
+      harness.pageState(),
+      policyOverride: ManualRefreshPolicy.defaults().copyWith(
+        autoSaveHighConfidence: true,
+      ),
+    );
+
+    expect(saved, isNotNull);
+    expect(harness.controller.lastResult.status, ManualRefreshStatus.saved);
+    expect(harness.quotaRepository.saved, saved);
+  });
 }
 
 class _Harness {
@@ -131,8 +147,9 @@ class _Harness {
     );
     parserRepository = _FakeParserRepository(this.events, _parseResult(now));
     manualRepository = _FakeManualRefreshRepository();
+    quotaRepository = _FakeQuotaRepository();
     final saveUseCase = SaveManualRefreshSnapshot(
-      quotaRepository: _FakeQuotaRepository(),
+      quotaRepository: quotaRepository,
       manualRefreshRepository: manualRepository,
       clock: FixedClock(now),
     );
@@ -176,6 +193,7 @@ class _Harness {
   late final _FakeExtractionRepository extractionRepository;
   late final _FakeParserRepository parserRepository;
   late final _FakeManualRefreshRepository manualRepository;
+  late final _FakeQuotaRepository quotaRepository;
   late final ManualRefreshController controller;
 
   ManualRefreshPageState pageState() {

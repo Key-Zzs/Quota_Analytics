@@ -196,18 +196,25 @@ class _QuotaShellState extends State<QuotaShell> {
     ];
 
     return AnimatedBuilder(
-      animation: quotaController,
+      animation: Listenable.merge([
+        quotaController,
+        controllers.manualRefreshController,
+        controllers.webAuthController,
+      ]),
       builder: (context, _) {
+        final manualRefreshController = controllers.manualRefreshController;
+        final isQuotaRefreshBusy =
+            quotaController.isLoading || manualRefreshController.isBusy;
         return Scaffold(
           appBar: AppBar(
             title: Text(_titleForIndex(_selectedIndex)),
             actions: [
               if (_selectedIndex == 0)
                 IconButton(
-                  tooltip: 'Refresh mock quota',
-                  onPressed: quotaController.isLoading
+                  tooltip: 'Refresh usage page',
+                  onPressed: isQuotaRefreshBusy
                       ? null
-                      : () => unawaited(quotaController.refresh()),
+                      : () => unawaited(_runQuotaPageUsageRefresh(controllers)),
                   icon: const Icon(Icons.refresh),
                 ),
             ],
@@ -260,6 +267,120 @@ class _QuotaShellState extends State<QuotaShell> {
       );
     }
     return const SizedBox.shrink();
+  }
+
+  Future<void> _runQuotaPageUsageRefresh(_AppControllers controllers) async {
+    final quotaController = controllers.quotaController;
+    final manualRefreshController = controllers.manualRefreshController;
+    final webAuthController = controllers.webAuthController;
+    if (quotaController.isLoading || manualRefreshController.isBusy) {
+      return;
+    }
+
+    final stopwatch = Stopwatch()..start();
+    quotaController.markExternalRefreshStarted(
+      'Opening usage page for manual refresh',
+    );
+
+    try {
+      final ready = await _ensureWebRefreshPageVisible(webAuthController);
+      if (!ready) {
+        throw StateError('WebView controller is not ready.');
+      }
+
+      final usageLoadResult = await _openUsagePageAndWait(controllers);
+      if (usageLoadResult.status != PageLoadWaitStatus.completed) {
+        throw StateError(_usagePageLoadError(usageLoadResult));
+      }
+
+      final saved = await manualRefreshController.refreshFromCurrentPage(
+        ManualRefreshPageState(
+          currentUrl: webAuthController.currentUrl,
+          pageTitle: webAuthController.pageTitle,
+          isLoading: webAuthController.isLoading,
+          isReady: webAuthController.isReady,
+        ),
+        reloadBeforeRefresh: false,
+        policyOverride: manualRefreshController.policy.copyWith(
+          autoSaveHighConfidence: true,
+        ),
+      );
+      stopwatch.stop();
+
+      if (saved == null) {
+        await quotaController.completeExternalRefreshWithoutSnapshot(
+          'Manual refresh completed without a high-confidence saved snapshot',
+          refreshDuration: stopwatch.elapsed,
+        );
+        return;
+      }
+
+      await quotaController.applySavedSnapshot(
+        saved,
+        resultMessage: 'Usage page manual refresh saved locally',
+        refreshDuration: stopwatch.elapsed,
+      );
+      if (mounted) {
+        setState(() {
+          _selectedIndex = 0;
+        });
+      }
+    } on Object catch (error) {
+      stopwatch.stop();
+      await quotaController.failExternalRefresh(
+        'Usage page manual refresh failed',
+        cause: error,
+        refreshDuration: stopwatch.elapsed,
+      );
+    }
+  }
+
+  Future<bool> _ensureWebRefreshPageVisible(
+    WebViewAuthController webAuthController,
+  ) async {
+    if (!mounted) {
+      return false;
+    }
+    if (_selectedIndex != 2) {
+      setState(() {
+        _selectedIndex = 2;
+      });
+    }
+
+    for (var attempt = 0; attempt < 3; attempt += 1) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (webAuthController.isReady) {
+        return true;
+      }
+    }
+    return webAuthController.isReady;
+  }
+
+  Future<PageLoadWaitResult> _openUsagePageAndWait(
+    _AppControllers controllers,
+  ) async {
+    final webAuthController = controllers.webAuthController;
+    final loadStartedAt = controllers.clock.now();
+    await webAuthController.openUsagePage();
+    final reloadPolicy =
+        controllers.settingsController.manualReloadBeforeRefreshPolicy;
+    return const PageLoadWaiter().waitForPageFinished(
+      pageState: WebViewAuthReloadService(controller: webAuthController),
+      reloadStartedAt: loadStartedAt,
+      timeout: reloadPolicy.reloadTimeout,
+      settleDelay: reloadPolicy.pageSettleDelay,
+    );
+  }
+
+  String _usagePageLoadError(PageLoadWaitResult result) {
+    return switch (result.status) {
+      PageLoadWaitStatus.completed => 'Usage page loaded.',
+      PageLoadWaitStatus.timeout =>
+        'Usage page did not finish loading before the refresh timeout.',
+      PageLoadWaitStatus.cancelled => 'Usage page load was cancelled.',
+      PageLoadWaitStatus.failed =>
+        result.errorMessage ?? 'Usage page failed to load.',
+    };
   }
 
   Future<_AppControllers> _createControllers() async {
@@ -382,6 +503,7 @@ class _QuotaShellState extends State<QuotaShell> {
     );
 
     final controllers = _AppControllers(
+      clock: effectiveClock,
       quotaController: quotaController,
       settingsController: settingsController,
       webAuthController: webAuthController,
@@ -442,6 +564,7 @@ class _QuotaShellState extends State<QuotaShell> {
 
 class _AppControllers {
   const _AppControllers({
+    required this.clock,
     required this.quotaController,
     required this.settingsController,
     required this.webAuthController,
@@ -452,6 +575,7 @@ class _AppControllers {
     required this.backgroundRefreshController,
   });
 
+  final Clock clock;
   final QuotaController quotaController;
   final SettingsController settingsController;
   final WebViewAuthController webAuthController;

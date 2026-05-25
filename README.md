@@ -10,20 +10,23 @@ by, or maintained by OpenAI, ChatGPT, or Codex.
 
 Stage 8 adds Android background task infrastructure and local notifications,
 but background work is safety-gated. Stage 8.1 adds optional foreground
-reload-before-refresh for manual and foreground auto refresh. Without an
-official API or background-safe data source, background mode uses notify-only
-behavior based on the last saved local snapshot and refresh metadata. Real
-quota refresh still requires foreground WebView visible-text extraction. The
-app still does not read cookies, tokens, passwords, browser storage contents,
-local browser profiles, credentials, HTML, or an official quota API.
+reload-before-refresh for manual and foreground auto refresh. Stage 8.2 routes
+the Quota page refresh action through the visible Usage page and manual refresh
+pipeline instead of the mock refresh path. Without an official API or
+background-safe data source, background mode uses notify-only behavior based on
+the last saved local snapshot and refresh metadata. Real quota refresh still
+requires foreground WebView visible-text extraction. The app still does not
+read cookies, tokens, passwords, browser storage contents, local browser
+profiles, credentials, HTML, or an official quota API.
 
 ## Current Status
 
-Stage 8.1: reload-before-refresh for manual and foreground refresh is complete.
+Stage 8.2: Quota page Usage refresh is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
-- Legacy mock refresh remains available from the app bar.
+- Quota app-bar refresh opens the visible Usage page, refreshes from the current
+  page, and saves high-confidence manual results for that tap.
 - Last mock snapshot restore on startup.
 - Bounded mock snapshot history.
 - Persisted foreground auto-refresh and refresh interval settings.
@@ -37,6 +40,8 @@ Stage 8.1: reload-before-refresh for manual and foreground refresh is complete.
 - Extracted text is redacted before display and local storage.
 - Users can manually parse the current redacted visible text.
 - Users can manually refresh from the current WebView page in one flow.
+- The Quota page refresh action reuses that manual refresh pipeline and no
+  longer calls the app-bar mock refresh path.
 - Manual refresh can optionally reload the current foreground WebView page
   before extraction. This is on by default because a user tap usually means the
   latest rendered official page is desired.
@@ -47,6 +52,8 @@ Stage 8.1: reload-before-refresh for manual and foreground refresh is complete.
   confidence.
 - High-confidence manual refresh can auto-save only if the user enables the
   conservative setting; it is off by default.
+- The Quota page refresh action uses a one-shot high-confidence auto-save
+  override without changing the persisted setting.
 - Foreground auto refresh is off by default, runs only while the app is
   resumed, uses the current already-open WebView page only, and reuses the
   manual refresh pipeline.
@@ -81,7 +88,7 @@ Stage 8.1: reload-before-refresh for manual and foreground refresh is complete.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
   Stage 5 parser, Stage 6 manual refresh, Stage 7 foreground auto refresh, and
   Stage 8 background refresh/notification safety flags, plus Stage 8.1 reload
-  status.
+  status and Stage 8.2 Quota refresh behavior.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -90,7 +97,8 @@ Stage 8.1: reload-before-refresh for manual and foreground refresh is complete.
 - 5-hour window mock display.
 - Weekly window mock display.
 - Credits mock display.
-- Manual mock refresh.
+- Local mock fallback for development and first-run demo state.
+- Quota page Usage refresh through the foreground manual refresh pipeline.
 - Local latest snapshot persistence.
 - Local history persistence, capped at 100 snapshots.
 - Persisted refresh interval settings UI.
@@ -191,7 +199,8 @@ summarized in [docs/stage5_report.md](docs/stage5_report.md), Stage 6 is
 summarized in [docs/stage6_report.md](docs/stage6_report.md), and Stage 7 is
 summarized in [docs/stage7_report.md](docs/stage7_report.md). Stage 8 is
 summarized in [docs/stage8_report.md](docs/stage8_report.md). Stage 8.1 is
-summarized in [docs/stage8_1_report.md](docs/stage8_1_report.md).
+summarized in [docs/stage8_1_report.md](docs/stage8_1_report.md). Stage 8.2 is
+summarized in [docs/stage8_2_report.md](docs/stage8_2_report.md).
 
 ## Project Structure
 
@@ -214,7 +223,8 @@ summarized in [docs/stage8_1_report.md](docs/stage8_1_report.md).
 │   ├── stage6_report.md
 │   ├── stage7_report.md
 │   ├── stage8_report.md
-│   └── stage8_1_report.md
+│   ├── stage8_1_report.md
+│   └── stage8_2_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -276,6 +286,8 @@ flutter run
 - Stage 8.1 reload-before-refresh is foreground only. It reloads only the
   visible, current WebView page before the existing `document.body.innerText`
   extraction pipeline.
+- Stage 8.2 Quota refresh is user-triggered, foreground-only, and uses the
+  visible Usage page before the same manual extraction pipeline.
 - Stage 7 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
 - Stage 8 persists mock quota data/settings, the last redacted extracted text
@@ -295,6 +307,8 @@ flutter run
 - [x] Stage 6: Real manual refresh flow
 - [x] Stage 7: Foreground auto refresh + WebView layout fix
 - [x] Stage 8: Android background refresh and notifications
+- [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
+- [x] Stage 8.2: Quota page usage refresh
 - [ ] Stage 9: Android home screen widget - data export layer
 - [ ] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration

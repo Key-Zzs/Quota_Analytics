@@ -98,6 +98,7 @@ class ManualRefreshController extends ChangeNotifier {
     bool reloadBeforeRefresh = true,
     ReloadCancellationSignal? reloadCancellationSignal,
     ReloadBeforeRefreshResult? completedReloadBeforeRefreshResult,
+    ManualRefreshPolicy? policyOverride,
   }) async {
     if (_isRefreshing || _isSaving) {
       return null;
@@ -138,7 +139,7 @@ class ManualRefreshController extends ChangeNotifier {
 
       final result = await _refreshQuotaFromWebView(
         pageState: effectivePageState,
-        policy: policy,
+        policy: policyOverride ?? policy,
         reloadBeforeRefreshResult: reloadResult,
         cancellationSignal: reloadCancellationSignal,
         onProgress: (progress) {

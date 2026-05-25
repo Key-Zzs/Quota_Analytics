@@ -60,6 +60,14 @@ refresh can do the same only while the app is resumed. Background refresh
 remains notify-only and does not call WebView reload, hidden WebViews, or
 JavaScript extraction.
 
+## Stage 8.2: Quota Page Usage Refresh
+
+Replaced the Quota page mock refresh shortcut with a foreground Usage page
+refresh flow. The app now opens the visible Usage WebView, refreshes from the
+current page through the manual refresh pipeline, saves high-confidence results
+for that tap, updates the Quota dashboard, and lets foreground auto refresh
+recalculate the next eligible refresh time.
+
 ## Stage 9: Android Home Screen Widget - Data Export Layer
 
 Export safe local snapshot summaries for Android widgets without WebView,
@@ -103,6 +111,7 @@ appropriate for this use case.
 - [x] Stage 7: Foreground auto refresh + WebView layout fix
 - [x] Stage 8: Android background refresh and notifications
 - [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
+- [x] Stage 8.2: Quota page usage refresh
 - [ ] Stage 9: Android home screen widget - data export layer
 - [ ] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration

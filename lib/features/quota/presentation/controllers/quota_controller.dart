@@ -57,10 +57,7 @@ class QuotaController extends ChangeNotifier {
           : 'Initial mock snapshot loaded';
     } on Object catch (error) {
       _status = QuotaPageStatus.error;
-      _errorMessage = AppError(
-        'Unable to load mock quota',
-        cause: error,
-      ).toString();
+      _errorMessage = AppError('Unable to load quota', cause: error).toString();
     }
 
     notifyListeners();
@@ -85,11 +82,46 @@ class QuotaController extends ChangeNotifier {
       _lastRefreshResult = 'Refresh failed';
       _status = QuotaPageStatus.error;
       _errorMessage = AppError(
-        'Unable to refresh mock quota',
+        'Unable to refresh quota',
         cause: error,
       ).toString();
     }
 
+    notifyListeners();
+  }
+
+  void markExternalRefreshStarted(String message) {
+    _status = QuotaPageStatus.loading;
+    _errorMessage = null;
+    _lastRefreshResult = message;
+    _lastRefreshDuration = null;
+    notifyListeners();
+  }
+
+  Future<void> completeExternalRefreshWithoutSnapshot(
+    String message, {
+    Duration? refreshDuration,
+  }) async {
+    _status = _snapshot == null
+        ? QuotaPageStatus.empty
+        : QuotaPageStatus.success;
+    _errorMessage = null;
+    _lastRefreshResult = message;
+    _lastRefreshDuration = refreshDuration;
+    await _refreshPersistenceState();
+    notifyListeners();
+  }
+
+  Future<void> failExternalRefresh(
+    String message, {
+    required Object cause,
+    Duration? refreshDuration,
+  }) async {
+    _status = QuotaPageStatus.error;
+    _lastRefreshDuration = refreshDuration;
+    _lastRefreshResult = message;
+    _errorMessage = AppError(message, cause: cause).toString();
+    await _refreshPersistenceState();
     notifyListeners();
   }
 
@@ -98,10 +130,14 @@ class QuotaController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> applySavedSnapshot(QuotaSnapshot snapshot) async {
+  Future<void> applySavedSnapshot(
+    QuotaSnapshot snapshot, {
+    String resultMessage = 'Parsed snapshot saved locally',
+    Duration? refreshDuration,
+  }) async {
     _applySnapshot(snapshot);
-    _lastRefreshResult = 'Parsed snapshot saved locally';
-    _lastRefreshDuration = null;
+    _lastRefreshResult = resultMessage;
+    _lastRefreshDuration = refreshDuration;
     await _refreshPersistenceState();
     notifyListeners();
   }

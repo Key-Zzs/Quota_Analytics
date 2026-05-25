@@ -8,8 +8,10 @@ notifications while preserving the foreground-only WebView acquisition
 boundary.
 
 Stage 8.1 adds foreground-only reload-before-refresh for manual and foreground
-auto refresh. Stage 8.1 does not implement cookies, tokens, storage reads,
-HTML extraction, backend calls, hidden WebView scraping, or true background web
+auto refresh. Stage 8.2 routes the Quota page refresh action through the
+visible Usage page and the manual refresh pipeline instead of the mock refresh
+path. These stages do not implement cookies, tokens, storage reads, HTML
+extraction, backend calls, hidden WebView scraping, or true background web
 refresh. The WebView login container, text extraction flow, parser, manual
 refresh orchestration, foreground auto refresh orchestration, background
 local-check orchestration, notifications, and quota persistence remain
@@ -35,9 +37,9 @@ The app uses a feature-first Clean Architecture layout:
 - `features/parser`: Stage 5 local parser domain model, regex parser,
   confidence rules, result-to-snapshot mapper, controller state, and widgets.
 - `features/refresh`: Stage 6 manual refresh orchestration plus Stage 8.1
-  reload-before-refresh policy, status/result model, reload service, page load
-  waiter, save policy, persisted last result, use cases, controller, and
-  widgets.
+  reload-before-refresh policy, Stage 8.2 one-shot high-confidence save
+  override support, status/result model, reload service, page load waiter, save
+  policy, persisted last result, use cases, controller, and widgets.
 - `features/auto_refresh`: Stage 7 foreground lifecycle/timer orchestration,
   Stage 8.1 optional foreground reload-before-auto-refresh, eligibility rules,
   status model, repository adapter, controller, and status widget. It reuses
@@ -92,10 +94,12 @@ repository contract. This keeps future data sources out of widget code.
 
 `PersistentQuotaRepository` first attempts to load the latest snapshot from
 `LocalQuotaDataSource`. If no valid local snapshot exists, it falls back to
-`MockQuotaDataSource`. The legacy app-bar mock refresh still writes mock data to
-latest snapshot storage and history. Stage 6 manual refresh uses `saveSnapshot`
-after user confirmation, or after high-confidence auto-save if the user enables
-that conservative setting.
+`MockQuotaDataSource`. Stage 8.2 removes the Quota app-bar mock refresh path:
+that action now opens the visible Usage page and saves through Stage 6 manual
+refresh. Stage 6 manual refresh uses `saveSnapshot` after user confirmation,
+after high-confidence auto-save if the user enables that conservative setting,
+or after the Stage 8.2 Quota refresh action applies its one-shot
+high-confidence auto-save override.
 
 ## Persistence Layer
 
@@ -226,8 +230,9 @@ or network access. Its only app input is Stage 4 redacted visible text.
 
 ## Refresh Feature
 
-The refresh feature owns Stage 6 manual orchestration and the Stage 8.1
-reload-before-refresh use case:
+The refresh feature owns Stage 6 manual orchestration, the Stage 8.1
+reload-before-refresh use case, and the Stage 8.2 Quota page usage-refresh
+shortcut:
 
 - `ManualRefreshStatus`: typed state machine from `checkingPage` through
   extraction, redaction, parsing, confirmation, saving, saved, and failure
@@ -239,6 +244,8 @@ reload-before-refresh use case:
 - `ManualRefreshPolicy`: conservative save policy. High confidence can
   auto-save only if enabled; medium requires confirmation; low is blocked by
   default.
+- Stage 8.2 can pass a one-shot policy override for a Quota page refresh tap so
+  high-confidence results save without changing the persisted setting.
 - `ReloadBeforeRefreshPolicy`: foreground reload configuration. Manual reload
   defaults on; foreground auto reload defaults off. Timeout, settle delay,
   cooldown, and max consecutive failures are centralized here.

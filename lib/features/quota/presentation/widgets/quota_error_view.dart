@@ -25,7 +25,7 @@ class QuotaErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Unable to show mock quota',
+              'Unable to show quota',
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),

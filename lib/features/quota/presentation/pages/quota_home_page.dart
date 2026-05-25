@@ -42,7 +42,9 @@ class QuotaHomePage extends StatelessWidget {
 
         if (snapshot == null) {
           return QuotaEmptyView(
-            onRefresh: () => unawaited(controller.refresh()),
+            onRefresh:
+                onGoToWebRefresh ??
+                () => unawaited(controller.loadLatestSnapshot()),
           );
         }
 
@@ -67,7 +69,7 @@ class _InitialLoadingView extends StatelessWidget {
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading mock quota...'),
+          Text('Loading quota...'),
         ],
       ),
     );
