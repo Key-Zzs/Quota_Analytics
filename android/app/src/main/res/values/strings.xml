@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quota_widget_title">Quota Analytics</string>
+    <string name="quota_widget_description">Quota Analytics safe summary widget</string>
+    <string name="quota_widget_no_data">No quota data</string>
+    <string name="quota_widget_no_data_short">No data</string>
+    <string name="quota_widget_open_app">Open app to refresh</string>
+    <string name="quota_widget_error">Widget data unavailable</string>
+    <string name="quota_widget_updated_none">Updated --:--</string>
+    <string name="quota_widget_updated_at">Updated %1$s</string>
+    <string name="quota_widget_reset_unknown">Reset unknown</string>
+    <string name="quota_widget_reset_at">Reset %1$s</string>
+    <string name="quota_widget_small_five_hour">5h %1$s</string>
+    <string name="quota_widget_small_weekly">Week %1$s</string>
+    <string name="quota_widget_credits">Credits %1$s</string>
+    <string name="quota_widget_source_confidence">%1$s &#183; %2$s</string>
+    <string name="quota_widget_summary_only">Summary only</string>
+    <string name="quota_widget_five_hour_label">5-hour</string>
+    <string name="quota_widget_weekly_label">Weekly</string>
+</resources>

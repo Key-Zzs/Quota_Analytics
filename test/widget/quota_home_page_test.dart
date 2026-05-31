@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.textContaining('Stage 9:'), findsOneWidget);
+    expect(find.textContaining('Stage 10:'), findsOneWidget);
     expect(find.text('Go to Web Refresh'), findsOneWidget);
 
     await tester.scrollUntilVisible(

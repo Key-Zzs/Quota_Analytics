@@ -75,7 +75,8 @@ cookie, token, storage, HTML, or page text access.
 
 ## Stage 10: Android Home Screen Widget - Native Widget Shell
 
-Create the native Android widget shell that displays exported local data.
+Implemented the native Android widget shell that displays exported local safe
+summary data through `AppWidgetProvider` and `RemoteViews`.
 
 ## Stage 11: Android Widget Refresh Integration
 
@@ -113,7 +114,7 @@ appropriate for this use case.
 - [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
 - [x] Stage 8.2: Quota page usage refresh pipeline
 - [x] Stage 9: Android home screen widget - data export layer
-- [ ] Stage 10: Android home screen widget - native widget shell
+- [x] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration
 - [ ] Stage 12: iOS adaptation feasibility
 - [ ] Stage 13: Desktop client / tray adaptation

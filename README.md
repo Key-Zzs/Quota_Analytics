@@ -13,22 +13,25 @@ but background work is safety-gated. Stage 8.1 adds optional foreground
 reload-before-refresh for manual and foreground auto refresh. Stage 8.2 routes
 the Quota page refresh action through the visible Usage page and manual refresh
 pipeline instead of the mock refresh path. Stage 9 exports a safe local widget
-summary for future Android home screen widgets. Without an official API or
-background-safe data source, background mode uses notify-only behavior based on
-the last saved local snapshot and refresh metadata. Real quota refresh still
-requires foreground WebView visible-text extraction. The app still does not
-read cookies, tokens, passwords, browser storage contents, local browser
-profiles, credentials, HTML, or an official quota API.
+summary, and Stage 10 adds the Android native home screen widget shell that
+displays that safe summary. Without an official API or background-safe data
+source, background mode uses notify-only behavior based on the last saved local
+snapshot and refresh metadata. Real quota refresh still requires foreground
+WebView visible-text extraction. The app still does not read cookies, tokens,
+passwords, browser storage contents, local browser profiles, credentials, HTML,
+or an official quota API.
 
 ## Current Status
 
-Stage 9: widget data export layer is complete.
+Stage 10: Android home screen widget native shell is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
 - App exports a safe `WidgetSnapshotSummary` from latest quota data.
 - Widget summary contains only display-safe quota fields.
-- No Android home screen widget UI yet.
+- Home screen widget can display the exported safe quota summary.
+- Widget opens the app on tap.
+- Widget does not login, parse pages, or access WebView.
 - No cookie/token/raw page text is stored for widgets.
 - Quota app-bar refresh opens the visible Usage page, refreshes from the current
   page, and saves high-confidence manual results for that tap.
@@ -73,6 +76,7 @@ Stage 9: widget data export layer is complete.
 - Background checks read only app-owned local snapshot/settings/metadata.
 - Widget export reads only app-owned `QuotaSnapshot` fields and writes a reduced
   display summary.
+- Android widget reads only the native mirrored safe summary.
 - Local notifications can remind the user when saved quota data is stale, quota
   is low, or the last refresh failed.
 - Notification cooldown metadata prevents repeated reminders.
@@ -81,6 +85,7 @@ Stage 9: widget data export layer is complete.
 - No background cookie/token/storage access.
 - No widget cookie/token/storage access.
 - No widget raw page text, parser input, or account email storage.
+- No widget WebView access, login, parser execution, or data upload.
 - No background HTML or page text extraction.
 - No cookie/token/storage access for reload-before-refresh.
 - No HTML extraction.
@@ -97,7 +102,8 @@ Stage 9: widget data export layer is complete.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
   Stage 5 parser, Stage 6 manual refresh, Stage 7 foreground auto refresh, and
   Stage 8 background refresh/notification safety flags, plus Stage 8.1 reload
-  status, Stage 8.2 Quota refresh behavior, and Stage 9 widget export status.
+  status, Stage 8.2 Quota refresh behavior, and Stage 10 widget export/update
+  status.
 - Clean, feature-first layered architecture.
 
 ## Features
@@ -210,7 +216,8 @@ summarized in [docs/stage7_report.md](docs/stage7_report.md). Stage 8 is
 summarized in [docs/stage8_report.md](docs/stage8_report.md). Stage 8.1 is
 summarized in [docs/stage8_1_report.md](docs/stage8_1_report.md). Stage 8.2 is
 summarized in [docs/stage8_2_report.md](docs/stage8_2_report.md). Stage 9 is
-summarized in [docs/stage9_report.md](docs/stage9_report.md).
+summarized in [docs/stage9_report.md](docs/stage9_report.md). Stage 10 is
+summarized in [docs/stage10_report.md](docs/stage10_report.md).
 
 ## Project Structure
 
@@ -235,7 +242,8 @@ summarized in [docs/stage9_report.md](docs/stage9_report.md).
 │   ├── stage8_report.md
 │   ├── stage8_1_report.md
 │   ├── stage8_2_report.md
-│   └── stage9_report.md
+│   ├── stage9_report.md
+│   └── stage10_report.md
 ├── lib/
 │   ├── app.dart
 │   ├── core/
@@ -300,9 +308,9 @@ flutter run
   extraction pipeline.
 - Stage 8.2 Quota refresh is user-triggered, foreground-only, and uses the
   visible Usage page before the same manual extraction pipeline.
-- Stage 9 widget export writes only a display-safe summary for future native
-  widget UI. It does not add Android widget UI, background widget refresh, or
-  WebView/parser/login access from widgets.
+- Stage 10 Android widgets read only the display-safe summary mirrored to
+  native storage. Widgets do not login, parse pages, access WebView, read
+  cookies/tokens/storage, or perform background web refresh.
 - Stage 7 WebView network access is limited to user-driven official-site
   navigation inside the app WebView.
 - Stage 8 persists mock quota data/settings, the last redacted extracted text
@@ -326,7 +334,7 @@ flutter run
 - [x] Stage 8.1: Reload-before-refresh for manual and foreground refresh
 - [x] Stage 8.2: Quota page usage refresh pipeline
 - [x] Stage 9: Android home screen widget - data export layer
-- [ ] Stage 10: Android home screen widget - native widget shell
+- [x] Stage 10: Android home screen widget - native widget shell
 - [ ] Stage 11: Android widget refresh integration
 - [ ] Stage 12: iOS adaptation feasibility
 - [ ] Stage 13: Desktop client / tray adaptation
@@ -345,6 +353,8 @@ flutter run
   localStorage, sessionStorage, HTML, or page text.
 - Widget export does not store raw page text, parser input, cookies, tokens,
   localStorage, sessionStorage, account email, or full URL query/fragment.
+- Android home screen widgets read only the exported safe summary and open the
+  app on tap.
 - Extracted text remains local and only a redacted preview is saved.
 - Parser works on redacted visible text only.
 - Parser results are local and may be inaccurate.

@@ -4,12 +4,11 @@ class AppConstants {
   static const appName = 'Quota Analytics';
   static const appSubtitle =
       'Unofficial personal tool / safety-gated background reminders';
-  static const appMode = 'stage9-widget-data-export';
+  static const appMode = 'stage10-android-widget-shell';
   static const stageNotice =
-      'Stage 9: latest quota snapshots are exported as a safe widget summary. '
-      'Android home screen widget UI is planned for Stage 10. Background '
-      'checks remain notify-only unless a future background-safe data source '
-      'exists.';
+      'Stage 10: Android home screen widgets display only the exported safe '
+      'quota summary. Widgets do not login, parse pages, access WebView, or '
+      'run background web refresh.';
   static const safetyNotice =
       'No password storage, cookie/token/localStorage/sessionStorage reading, HTML extraction, network upload, hidden WebView scraping, or background page text extraction.';
 }

@@ -10,6 +10,8 @@ import 'package:quota_analytics/features/widget_export/data/repositories/widget_
 import 'package:quota_analytics/features/widget_export/domain/usecases/clear_widget_summary.dart';
 import 'package:quota_analytics/features/widget_export/domain/usecases/export_widget_summary.dart';
 import 'package:quota_analytics/features/widget_export/domain/usecases/get_widget_summary.dart';
+import 'package:quota_analytics/features/widget_export/domain/usecases/notify_widget_update.dart';
+import 'package:quota_analytics/features/widget_export/domain/repositories/widget_update_notifier.dart';
 import 'package:quota_analytics/features/widget_export/presentation/controllers/widget_export_controller.dart';
 import 'package:quota_analytics/features/widget_export/presentation/widgets/widget_export_status_card.dart';
 import 'package:quota_analytics/features/widget_export/presentation/widgets/widget_summary_preview_card.dart';
@@ -33,10 +35,15 @@ void main() {
 
     expect(find.text('Widget Export'), findsOneWidget);
     expect(find.text('Widget export enabled'), findsOneWidget);
-    expect(find.text('Export widget summary now'), findsOneWidget);
+    expect(find.text('Update Android widgets now'), findsOneWidget);
+    expect(find.text('Export and update widget now'), findsOneWidget);
     expect(find.text('Clear widget summary'), findsOneWidget);
     expect(
-      find.text('Stage 9 only exports data, no Android widget UI yet.'),
+      find.text('Widget reads display-safe summary only.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Widget does not login, parse pages, or access WebView.'),
       findsOneWidget,
     );
   });
@@ -84,7 +91,7 @@ void main() {
     },
   );
 
-  testWidgets('Widget export action buttons exist', (tester) async {
+  testWidgets('Stage 10 widget export action buttons exist', (tester) async {
     final snapshot = QuotaSnapshotModel.mock(capturedAt: now, variant: 1);
     final controller = await _controllerWithExportedSummary(snapshot, now);
 
@@ -101,7 +108,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Export widget summary now'), findsOneWidget);
+    expect(find.text('Update Android widgets now'), findsOneWidget);
+    expect(find.text('Export and update widget now'), findsOneWidget);
     expect(find.text('Clear widget summary'), findsOneWidget);
   });
 }
@@ -115,6 +123,7 @@ Future<WidgetExportController> _controllerWithExportedSummary(
     exportWidgetSummary: ExportWidgetSummary(repository),
     getWidgetSummary: GetWidgetSummary(repository),
     clearWidgetSummary: ClearWidgetSummary(repository),
+    notifyWidgetUpdate: const NotifyWidgetUpdate(NoopWidgetUpdateNotifier()),
   );
   await controller.exportNow(snapshot);
   return controller;

@@ -1,5 +1,22 @@
 # Security
 
+## Stage 10 Android Widget Boundary
+
+Stage 10 adds a native Android home screen widget shell. The widget reads only
+the display-safe `WidgetSnapshotSummary` exported by the app and mirrored into
+Android-native SharedPreferences under `quota_widget_summary` /
+`latest_summary_json`.
+
+The widget does not access WebView, does not login, does not execute
+JavaScript, does not read `document.body.innerText`, does not read HTML, does
+not run the quota parser, does not read raw page text or parser input, and does
+not access cookies, tokens, `localStorage`, or `sessionStorage`.
+
+Widget taps open the main app only. They do not trigger hidden webpage reads,
+background WebView refresh, automatic login, parser execution, or data upload.
+Stage 10 adds no dangerous permissions, no foreground service, no exact alarm,
+and no background service.
+
 ## Stage 9 Widget Export Boundary
 
 Stage 9 exports a small `WidgetSnapshotSummary` from an already-saved

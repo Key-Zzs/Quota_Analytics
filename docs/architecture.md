@@ -3,20 +3,20 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 8 adds Android background task infrastructure and local
-notifications while preserving the foreground-only WebView acquisition
-boundary.
+information. Stage 10 adds an Android native home screen widget shell while
+preserving the foreground-only WebView acquisition boundary.
 
 Stage 8.1 adds foreground-only reload-before-refresh for manual and foreground
 auto refresh. Stage 8.2 routes the Quota page refresh action through the
 visible Usage page and the manual refresh pipeline instead of the mock refresh
-path. Stage 9 adds a safe widget summary export layer for future Android home
-screen widgets. These stages do not implement cookies, tokens, storage reads,
-HTML extraction, backend calls, hidden WebView scraping, true background web
-refresh, or native widget UI. The WebView login container, text extraction
-flow, parser, manual refresh orchestration, foreground auto refresh
-orchestration, background local-check orchestration, notifications, widget
-summary export, and quota persistence remain intentionally separate.
+path. Stage 9 adds a safe widget summary export layer, and Stage 10 adds the
+Android native widget shell that displays that summary with `RemoteViews`.
+These stages do not implement cookies, tokens, storage reads, HTML extraction,
+backend calls, hidden WebView scraping, true background web refresh, or widget
+web access. The WebView login container, text extraction flow, parser, manual
+refresh orchestration, foreground auto refresh orchestration, background
+local-check orchestration, notifications, widget summary export, native widget
+display, and quota persistence remain intentionally separate.
 
 ## Layers
 
@@ -53,9 +53,10 @@ The app uses a feature-first Clean Architecture layout:
   metadata, permission status, and local notification adapter. It does not
   depend on WebView.
 - `features/widget_export`: Stage 9 safe summary schema, mapper, storage,
-  repository, export use cases, repository wrapper, controller, and Debug UI.
-  It depends on already-created `QuotaSnapshot` data and does not depend on
-  WebView, extraction, parser input, cookies, tokens, or browser storage.
+  repository, export/update use cases, repository wrapper, platform channel,
+  controller, and Debug UI. It depends on already-created `QuotaSnapshot` data
+  and does not depend on WebView, extraction, parser input, cookies, tokens, or
+  browser storage.
 - `platform_placeholders`: iOS, desktop, and watch migration notes.
 
 ## Quota Domain Model
@@ -140,9 +141,10 @@ Current keys:
 
 Snapshot history is newest-first and capped at 100 records.
 
-## Widget Export Feature
+## Widget Export And Android Widget Feature
 
-The widget export feature owns the Stage 9 data export layer:
+The widget export feature owns the Stage 9 data export layer and Stage 10
+Flutter-side update signal:
 
 - `WidgetSnapshotSummary`: stable schema version `1` for display-safe widget
   fields.
@@ -152,9 +154,14 @@ The widget export feature owns the Stage 9 data export layer:
 - `WidgetSummaryRepository`: domain contract for export, read, metadata, and
   clear operations.
 - `WidgetSummaryRepositoryImpl`: best-effort persistence wrapper around
-  `LocalWidgetSummaryDataSource`.
+  `LocalWidgetSummaryDataSource`; after successful export it mirrors the safe
+  summary to native Android storage and signals widget updates.
 - `ExportWidgetSummary`, `GetWidgetSummary`, and `ClearWidgetSummary`: use
   cases for app and Debug controls.
+- `NotifyWidgetUpdate`: use case for a signal-only Android widget update.
+- `AndroidWidgetUpdateChannel`: platform channel implementation. It writes only
+  display-safe summary JSON to native storage, clears native summary JSON, and
+  sends `updateQuotaWidgets` with no payload.
 - `WidgetExportingQuotaRepository`: decorates `QuotaRepository` so successful
   latest snapshot saves also export a widget summary without changing snapshot
   contents.
@@ -162,16 +169,26 @@ The widget export feature owns the Stage 9 data export layer:
   `WidgetSummaryPreviewCard`: Debug UI for export state and manual test
   actions.
 
-Future Android widget code should read only `WidgetSnapshotSummary`, not the
-full `QuotaSnapshot`. That keeps native widget display independent of
-`accountLabel`, `rawDebugText`, parser internals, WebView state, extraction
-cache, cookies, tokens, browser storage, and page text.
+The Android native widget shell lives under
+`android/app/src/main/kotlin/com/keyzzs/quota_analytics/widget/`:
 
-Stage 10 can reuse the same JSON schema. If native Kotlin cannot conveniently
-read Flutter `shared_preferences` in the final Android packaging, the app can
-mirror the same summary through a platform bridge to Android-native
-SharedPreferences or a small app-owned file without changing the widget-facing
-schema.
+- `QuotaWidgetProvider`: Android `AppWidgetProvider`.
+- `QuotaWidgetSummaryReader`: reads only
+  `quota_widget_summary/latest_summary_json`.
+- `QuotaWidgetUpdater`: binds small/medium `RemoteViews` and opens the app on
+  tap.
+- `QuotaWidgetSummary`: native safe summary model and JSON normalization.
+
+The widget data flow is:
+
+```text
+QuotaSnapshot -> WidgetSnapshotSummary -> native SharedPreferences -> RemoteViews
+```
+
+Native widget display reads only `WidgetSnapshotSummary`, not the full
+`QuotaSnapshot`. That keeps the widget independent of `accountLabel`,
+`rawDebugText`, parser internals, WebView state, extraction cache, cookies,
+tokens, browser storage, and page text.
 
 ## Settings Repository
 

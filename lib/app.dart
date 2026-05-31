@@ -59,11 +59,13 @@ import 'features/settings/presentation/controllers/settings_controller.dart';
 import 'features/settings/presentation/pages/settings_page.dart';
 import 'features/widget_export/data/datasources/local_widget_summary_datasource.dart';
 import 'features/widget_export/data/mappers/quota_snapshot_to_widget_summary_mapper.dart';
+import 'features/widget_export/data/platform/android_widget_update_channel.dart';
 import 'features/widget_export/data/repositories/widget_exporting_quota_repository.dart';
 import 'features/widget_export/data/repositories/widget_summary_repository_impl.dart';
 import 'features/widget_export/domain/usecases/clear_widget_summary.dart';
 import 'features/widget_export/domain/usecases/export_widget_summary.dart';
 import 'features/widget_export/domain/usecases/get_widget_summary.dart';
+import 'features/widget_export/domain/usecases/notify_widget_update.dart';
 import 'features/widget_export/presentation/controllers/widget_export_controller.dart';
 
 class QuotaAnalyticsApp extends StatelessWidget {
@@ -395,10 +397,14 @@ class _QuotaShellState extends State<QuotaShell> {
   Future<_AppControllers> _createControllers() async {
     final effectiveClock = widget.clock ?? const SystemClock();
     final storage = await _createStorageIfNeeded();
+    final widgetUpdateNotifier = AndroidWidgetUpdateChannel(
+      clock: effectiveClock,
+    );
     final widgetSummaryRepository = WidgetSummaryRepositoryImpl(
       dataSource: LocalWidgetSummaryDataSource(storage: storage),
       mapper: const QuotaSnapshotToWidgetSummaryMapper(),
       clock: effectiveClock,
+      widgetUpdateNotifier: widgetUpdateNotifier,
     );
     final baseQuotaRepository =
         widget.quotaRepository ??
@@ -523,6 +529,7 @@ class _QuotaShellState extends State<QuotaShell> {
       exportWidgetSummary: ExportWidgetSummary(widgetSummaryRepository),
       getWidgetSummary: GetWidgetSummary(widgetSummaryRepository),
       clearWidgetSummary: ClearWidgetSummary(widgetSummaryRepository),
+      notifyWidgetUpdate: NotifyWidgetUpdate(widgetUpdateNotifier),
     );
 
     final controllers = _AppControllers(

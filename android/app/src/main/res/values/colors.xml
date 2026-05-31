@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="quota_widget_background">#F8FAFC</color>
+    <color name="quota_widget_on_background">#0F172A</color>
+    <color name="quota_widget_secondary_text">#475569</color>
+    <color name="quota_widget_accent">#0F766E</color>
+    <color name="quota_widget_badge_background">#E2E8F0</color>
+    <color name="quota_widget_badge_text">#334155</color>
+    <color name="quota_widget_divider">#CBD5E1</color>
+</resources>

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/date_time_format.dart';
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../../domain/entities/widget_export_status.dart';
+import '../../domain/entities/widget_update_result.dart';
 import '../controllers/widget_export_controller.dart';
 import 'widget_summary_preview_card.dart';
 
@@ -36,6 +37,14 @@ class WidgetExportStatusCard extends StatelessWidget {
             const SizedBox(height: 12),
             _Row(label: 'Widget export enabled', value: 'true'),
             _Row(
+              label: 'Android widget shell available',
+              value: controller.widgetShellStatus.availableLabel,
+            ),
+            _Row(
+              label: 'Android widgets installed',
+              value: controller.widgetShellStatus.installedLabel,
+            ),
+            _Row(
               label: 'Last widget export status',
               value: metadata.status.label,
             ),
@@ -46,6 +55,18 @@ class WidgetExportStatusCard extends StatelessWidget {
             _Row(
               label: 'Last widget export error',
               value: metadata.lastExportError ?? controller.lastError ?? 'none',
+            ),
+            _Row(
+              label: 'Last widget update signal sent at',
+              value: formatDateTime(controller.lastWidgetUpdateResult.sentAt),
+            ),
+            _Row(
+              label: 'Last widget update status',
+              value: controller.lastWidgetUpdateResult.status.label,
+            ),
+            _Row(
+              label: 'Last widget update error',
+              value: controller.lastWidgetUpdateError ?? 'none',
             ),
             _Row(
               label: 'schemaVersion',
@@ -62,7 +83,10 @@ class WidgetExportStatusCard extends StatelessWidget {
               value: summary?.parserConfidence ?? 'none',
             ),
             const SizedBox(height: 12),
-            const Text('Stage 9 only exports data, no Android widget UI yet.'),
+            const Text('Widget reads display-safe summary only.'),
+            const Text(
+              'Widget does not login, parse pages, or access WebView.',
+            ),
             const SizedBox(height: 12),
             WidgetSummaryPreviewCard(summary: summary),
             if (controller.message != null) ...[
@@ -85,7 +109,14 @@ class WidgetExportStatusCard extends StatelessWidget {
                       ? null
                       : () => unawaited(controller.exportNow(latestSnapshot)),
                   icon: const Icon(Icons.ios_share_outlined),
-                  label: const Text('Export widget summary now'),
+                  label: const Text('Export and update widget now'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: controller.isBusy
+                      ? null
+                      : () => unawaited(controller.updateWidgetsNow()),
+                  icon: const Icon(Icons.widgets_outlined),
+                  label: const Text('Update Android widgets now'),
                 ),
                 OutlinedButton.icon(
                   onPressed: controller.isBusy
