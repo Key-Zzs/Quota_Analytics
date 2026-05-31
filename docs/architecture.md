@@ -3,14 +3,15 @@
 ## Project Goal
 
 Quota Analytics is an unofficial personal app for viewing quota-like usage
-information. Stage 10 adds an Android native home screen widget shell while
-preserving the foreground-only WebView acquisition boundary.
+information. Stage 11 integrates Android widget refresh signals and click
+routing while preserving the foreground-only WebView acquisition boundary.
 
 Stage 8.1 adds foreground-only reload-before-refresh for manual and foreground
 auto refresh. Stage 8.2 routes the Quota page refresh action through the
 visible Usage page and the manual refresh pipeline instead of the mock refresh
-path. Stage 9 adds a safe widget summary export layer, and Stage 10 adds the
-Android native widget shell that displays that summary with `RemoteViews`.
+path. Stage 9 adds a safe widget summary export layer, Stage 10 adds the
+Android native widget shell that displays that summary with `RemoteViews`, and
+Stage 11 connects widget updates to safe app-owned summary changes.
 These stages do not implement cookies, tokens, storage reads, HTML extraction,
 backend calls, hidden WebView scraping, true background web refresh, or widget
 web access. The WebView login container, text extraction flow, parser, manual
@@ -143,8 +144,8 @@ Snapshot history is newest-first and capped at 100 records.
 
 ## Widget Export And Android Widget Feature
 
-The widget export feature owns the Stage 9 data export layer and Stage 10
-Flutter-side update signal:
+The widget export feature owns the Stage 9 data export layer, Stage 10 native
+shell, and Stage 11 refresh integration:
 
 - `WidgetSnapshotSummary`: stable schema version `1` for display-safe widget
   fields.
@@ -155,13 +156,18 @@ Flutter-side update signal:
   clear operations.
 - `WidgetSummaryRepositoryImpl`: best-effort persistence wrapper around
   `LocalWidgetSummaryDataSource`; after successful export it mirrors the safe
-  summary to native Android storage and signals widget updates.
+  summary to native Android storage and signals widget updates with a safe
+  reason.
 - `ExportWidgetSummary`, `GetWidgetSummary`, and `ClearWidgetSummary`: use
   cases for app and Debug controls.
 - `NotifyWidgetUpdate`: use case for a signal-only Android widget update.
-- `AndroidWidgetUpdateChannel`: platform channel implementation. It writes only
-  display-safe summary JSON to native storage, clears native summary JSON, and
-  sends `updateQuotaWidgets` with no payload.
+- `AndroidWidgetUpdateChannel`: platform channel implementation on
+  `quota_analytics/widget`. It writes only display-safe summary JSON to native
+  storage, clears native summary JSON, and sends `updateQuotaWidgets` with only
+  a safe reason and timestamp.
+- `AndroidWidgetLaunchChannel`, `WidgetLaunchAction`, and
+  `WidgetLaunchRouter`: consume native widget click actions and route them to
+  the Quota page or visible refresh-flow entry.
 - `WidgetExportingQuotaRepository`: decorates `QuotaRepository` so successful
   latest snapshot saves also export a widget summary without changing snapshot
   contents.
@@ -172,17 +178,29 @@ Flutter-side update signal:
 The Android native widget shell lives under
 `android/app/src/main/kotlin/com/keyzzs/quota_analytics/widget/`:
 
-- `QuotaWidgetProvider`: Android `AppWidgetProvider`.
+- `QuotaWidgetProvider`: Android `AppWidgetProvider` with `onUpdate`,
+  `onEnabled`, and safe custom update handling.
 - `QuotaWidgetSummaryReader`: reads only
-  `quota_widget_summary/latest_summary_json`.
-- `QuotaWidgetUpdater`: binds small/medium `RemoteViews` and opens the app on
-  tap.
+  `quota_widget_summary/latest_summary_json`, with a compatibility fallback to
+  the Flutter display-safe summary key.
+- `QuotaWidgetUpdater`: binds small/medium `RemoteViews`, re-evaluates stale
+  display state, updates all installed widgets through `AppWidgetManager`, and
+  creates safe PendingIntents for main and refresh clicks.
 - `QuotaWidgetSummary`: native safe summary model and JSON normalization.
 
 The widget data flow is:
 
 ```text
-QuotaSnapshot -> WidgetSnapshotSummary -> native SharedPreferences -> RemoteViews
+App refresh -> QuotaSnapshot -> WidgetSnapshotSummary -> native SharedPreferences
+-> updateAppWidget -> RemoteViews
+```
+
+Widget click routing is intentionally foreground-only:
+
+```text
+Widget main click -> MainActivity extras(source=widget,target=quota) -> Quota tab
+Widget refresh click -> MainActivity extras(target=refreshUsagePage)
+-> Quota tab prompt: "Tap Refresh usage page to update"
 ```
 
 Native widget display reads only `WidgetSnapshotSummary`, not the full

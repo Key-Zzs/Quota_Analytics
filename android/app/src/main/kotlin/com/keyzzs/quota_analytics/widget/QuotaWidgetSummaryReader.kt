@@ -10,10 +10,14 @@ sealed class QuotaWidgetReadResult {
 
 class QuotaWidgetSummaryReader(private val context: Context) {
     fun read(): QuotaWidgetReadResult {
-        val raw = context.getSharedPreferences(
+        val nativeRaw = context.getSharedPreferences(
             QuotaWidgetConstants.PREFERENCES_NAME,
             Context.MODE_PRIVATE,
         ).getString(QuotaWidgetConstants.LATEST_SUMMARY_JSON_KEY, null)
+        val raw = nativeRaw ?: context.getSharedPreferences(
+            QuotaWidgetConstants.FLUTTER_PREFERENCES_NAME,
+            Context.MODE_PRIVATE,
+        ).getString(QuotaWidgetConstants.FLUTTER_LATEST_SUMMARY_JSON_KEY, null)
 
         if (raw.isNullOrBlank()) {
             return QuotaWidgetReadResult.NoData

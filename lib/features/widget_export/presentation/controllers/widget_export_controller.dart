@@ -7,6 +7,7 @@ import '../../domain/entities/widget_export_status.dart';
 import '../../domain/entities/widget_snapshot_summary.dart';
 import '../../domain/entities/widget_shell_status.dart';
 import '../../domain/entities/widget_update_result.dart';
+import '../../domain/entities/widget_update_reason.dart';
 import '../../domain/usecases/clear_widget_summary.dart';
 import '../../domain/usecases/export_widget_summary.dart';
 import '../../domain/usecases/get_widget_summary.dart';
@@ -35,6 +36,8 @@ class WidgetExportController extends ChangeNotifier {
   bool _isBusy = false;
   String? _message;
   String? _lastError;
+  String? _lastWidgetLaunchSource;
+  String? _lastWidgetLaunchTarget;
 
   WidgetSnapshotSummary? get summary => _summary;
   WidgetExportMetadata get metadata => _metadata;
@@ -44,6 +47,9 @@ class WidgetExportController extends ChangeNotifier {
   String? get message => _message;
   String? get lastError => _lastError;
   String? get lastWidgetUpdateError => _lastWidgetUpdateResult.safeError;
+  String? get lastWidgetUpdateReason => _lastWidgetUpdateResult.reason;
+  String? get lastWidgetLaunchSource => _lastWidgetLaunchSource;
+  String? get lastWidgetLaunchTarget => _lastWidgetLaunchTarget;
   bool get exportEnabled => true;
 
   Future<void> load() async {
@@ -84,7 +90,10 @@ class WidgetExportController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _exportWidgetSummary(snapshot);
+      final result = await _exportWidgetSummary(
+        snapshot,
+        updateReason: WidgetUpdateReason.debugExport,
+      );
       _summary = result.summary ?? await _getWidgetSummary();
       _metadata = await _getWidgetSummary.metadata();
       _recordWidgetUpdateResult(result.widgetUpdateResult);
@@ -105,7 +114,9 @@ class WidgetExportController extends ChangeNotifier {
     }
   }
 
-  Future<void> clearSummary() async {
+  Future<void> clearSummary({
+    String updateReason = WidgetUpdateReason.clearWidgetSummary,
+  }) async {
     if (_isBusy) {
       return;
     }
@@ -116,7 +127,9 @@ class WidgetExportController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _clearWidgetSummary();
+      final result = await _clearWidgetSummary(
+        updateReason: updateReason,
+      );
       _summary = null;
       _metadata = await _getWidgetSummary.metadata();
       _recordWidgetUpdateResult(result.widgetUpdateResult);
@@ -149,7 +162,9 @@ class WidgetExportController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _notifyWidgetUpdate();
+      final result = await _notifyWidgetUpdate(
+        reason: WidgetUpdateReason.debugUpdate,
+      );
       _recordWidgetUpdateResult(result);
       _widgetShellStatus = await _notifyWidgetUpdate.getShellStatus();
       _message = result.failed
@@ -159,6 +174,7 @@ class WidgetExportController extends ChangeNotifier {
       _recordWidgetUpdateResult(
         WidgetUpdateResult.failed(
           operation: 'update_widgets',
+          reason: WidgetUpdateReason.debugUpdate,
           sentAt: DateTime.now(),
           safeError: SensitiveDataPolicy.sanitizeLogText(error.toString()),
         ),
@@ -175,5 +191,14 @@ class WidgetExportController extends ChangeNotifier {
       return;
     }
     _lastWidgetUpdateResult = result;
+  }
+
+  void recordWidgetLaunchAction({
+    required String source,
+    required String target,
+  }) {
+    _lastWidgetLaunchSource = source;
+    _lastWidgetLaunchTarget = target;
+    notifyListeners();
   }
 }

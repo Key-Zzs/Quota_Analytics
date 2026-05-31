@@ -80,8 +80,10 @@ summary data through `AppWidgetProvider` and `RemoteViews`.
 
 ## Stage 11: Android Widget Refresh Integration
 
-Connect widget refresh actions to safe app-owned data export and foreground app
-entry points.
+Implemented safe Android widget refresh integration. App-owned quota summary
+changes now signal full RemoteViews updates, widget refresh opens the visible
+app refresh entry, and background notify-only checks can refresh widget
+stale/status metadata without WebView work.
 
 ## Stage 12: iOS Adaptation Feasibility
 
@@ -115,7 +117,7 @@ appropriate for this use case.
 - [x] Stage 8.2: Quota page usage refresh pipeline
 - [x] Stage 9: Android home screen widget - data export layer
 - [x] Stage 10: Android home screen widget - native widget shell
-- [ ] Stage 11: Android widget refresh integration
+- [x] Stage 11: Android widget refresh integration
 - [ ] Stage 12: iOS adaptation feasibility
 - [ ] Stage 13: Desktop client / tray adaptation
 - [ ] Stage 14: Wearable adaptation

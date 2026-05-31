@@ -13,8 +13,9 @@ but background work is safety-gated. Stage 8.1 adds optional foreground
 reload-before-refresh for manual and foreground auto refresh. Stage 8.2 routes
 the Quota page refresh action through the visible Usage page and manual refresh
 pipeline instead of the mock refresh path. Stage 9 exports a safe local widget
-summary, and Stage 10 adds the Android native home screen widget shell that
-displays that safe summary. Without an official API or background-safe data
+summary, Stage 10 adds the Android native home screen widget shell, and Stage
+11 connects safe widget update signals and click routing. Without an official
+API or background-safe data
 source, background mode uses notify-only behavior based on the last saved local
 snapshot and refresh metadata. Real quota refresh still requires foreground
 WebView visible-text extraction. The app still does not read cookies, tokens,
@@ -23,15 +24,21 @@ or an official quota API.
 
 ## Current Status
 
-Stage 10: Android home screen widget native shell is complete.
+Stage 11: Android widget refresh integration is complete.
 
 - Flutter Android-first implementation.
 - Mock quota dashboard.
 - App exports a safe `WidgetSnapshotSummary` from latest quota data.
 - Widget summary contains only display-safe quota fields.
 - Home screen widget can display the exported safe quota summary.
+- Widget updates after app quota refresh, export, background notify-only stale
+  checks, and clear events.
+- Widget main tap opens the app Quota page.
+- Widget refresh entry opens the app refresh flow entry.
+- Widget refresh does not refresh web pages in background.
 - Widget opens the app on tap.
 - Widget does not login, parse pages, or access WebView.
+- Widget only reads display-safe summary data.
 - No cookie/token/raw page text is stored for widgets.
 - Quota app-bar refresh opens the visible Usage page, refreshes from the current
   page, and saves high-confidence manual results for that tap.
@@ -102,7 +109,7 @@ Stage 10: Android home screen widget native shell is complete.
 - Debug page with persistence diagnostics, WebView status, Stage 4 extraction,
   Stage 5 parser, Stage 6 manual refresh, Stage 7 foreground auto refresh, and
   Stage 8 background refresh/notification safety flags, plus Stage 8.1 reload
-  status, Stage 8.2 Quota refresh behavior, and Stage 10 widget export/update
+  status, Stage 8.2 Quota refresh behavior, and Stage 11 widget export/update
   status.
 - Clean, feature-first layered architecture.
 
@@ -335,7 +342,7 @@ flutter run
 - [x] Stage 8.2: Quota page usage refresh pipeline
 - [x] Stage 9: Android home screen widget - data export layer
 - [x] Stage 10: Android home screen widget - native widget shell
-- [ ] Stage 11: Android widget refresh integration
+- [x] Stage 11: Android widget refresh integration
 - [ ] Stage 12: iOS adaptation feasibility
 - [ ] Stage 13: Desktop client / tray adaptation
 - [ ] Stage 14: Wearable adaptation

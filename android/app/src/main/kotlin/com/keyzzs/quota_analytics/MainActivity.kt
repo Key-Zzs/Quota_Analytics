@@ -1,6 +1,8 @@
 package com.keyzzs.quota_analytics
 
 import android.content.Context
+import android.content.Intent
+import android.os.Bundle
 import com.keyzzs.quota_analytics.widget.QuotaWidgetConstants
 import com.keyzzs.quota_analytics.widget.QuotaWidgetSummary
 import com.keyzzs.quota_analytics.widget.QuotaWidgetUpdater
@@ -9,13 +11,22 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var widgetChannel: MethodChannel? = null
+    private var pendingWidgetLaunchAction: Map<String, String>? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        pendingWidgetLaunchAction = widgetLaunchActionFromIntent(intent)
+        super.onCreate(savedInstanceState)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(
+        widgetChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             QuotaWidgetConstants.CHANNEL_NAME,
-        ).setMethodCallHandler { call, result ->
+        )
+        widgetChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 QuotaWidgetConstants.METHOD_SAVE_SUMMARY -> {
                     val summaryJson = call.argument<String>("summaryJson")
@@ -79,8 +90,61 @@ class MainActivity : FlutterActivity() {
                     )
                 }
 
+                QuotaWidgetConstants.METHOD_CONSUME_WIDGET_LAUNCH_ACTION -> {
+                    val action = pendingWidgetLaunchAction
+                    pendingWidgetLaunchAction = null
+                    result.success(action)
+                }
+
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val action = widgetLaunchActionFromIntent(intent) ?: return
+        pendingWidgetLaunchAction = action
+        widgetChannel?.invokeMethod(
+            QuotaWidgetConstants.METHOD_WIDGET_LAUNCH_ACTION,
+            action,
+        )
+    }
+
+    private fun widgetLaunchActionFromIntent(intent: Intent?): Map<String, String>? {
+        if (intent == null) {
+            return null
+        }
+        val source = intent.getStringExtra(QuotaWidgetConstants.EXTRA_SOURCE)
+        if (source != QuotaWidgetConstants.SOURCE_WIDGET) {
+            return null
+        }
+        val target = intent.getStringExtra(QuotaWidgetConstants.EXTRA_TARGET)
+            ?: intent.getStringExtra(QuotaWidgetConstants.EXTRA_OPEN_ROUTE)
+            ?: QuotaWidgetConstants.TARGET_QUOTA
+        val safeTarget = when (target) {
+            QuotaWidgetConstants.TARGET_REFRESH_USAGE_PAGE ->
+                QuotaWidgetConstants.TARGET_REFRESH_USAGE_PAGE
+            else -> QuotaWidgetConstants.TARGET_QUOTA
+        }
+        val action = intent.getStringExtra(QuotaWidgetConstants.EXTRA_ACTION)
+            ?: if (safeTarget == QuotaWidgetConstants.TARGET_REFRESH_USAGE_PAGE) {
+                QuotaWidgetConstants.ACTION_OPEN_REFRESH_FLOW
+            } else {
+                QuotaWidgetConstants.ACTION_OPEN_QUOTA
+            }
+        val safeAction = when (action) {
+            QuotaWidgetConstants.ACTION_OPEN_REFRESH_FLOW ->
+                QuotaWidgetConstants.ACTION_OPEN_REFRESH_FLOW
+            QuotaWidgetConstants.ACTION_OPEN_QUOTA ->
+                QuotaWidgetConstants.ACTION_OPEN_QUOTA
+            else -> QuotaWidgetConstants.ACTION_OPEN_QUOTA
+        }
+        return mapOf(
+            QuotaWidgetConstants.EXTRA_SOURCE to QuotaWidgetConstants.SOURCE_WIDGET,
+            QuotaWidgetConstants.EXTRA_TARGET to safeTarget,
+            QuotaWidgetConstants.EXTRA_ACTION to safeAction,
+        )
     }
 }

@@ -27,6 +27,8 @@ void main() {
   RunBackgroundRefreshCheck buildUsecase({
     required _FakeBackgroundRepository backgroundRepository,
     required _FakeNotificationRepository notificationRepository,
+    Future<void> Function(QuotaSnapshot snapshot)?
+    onLatestSnapshotCheckedForWidget,
   }) {
     return RunBackgroundRefreshCheck(
       backgroundRepository: backgroundRepository,
@@ -34,6 +36,7 @@ void main() {
       evaluateEligibility: const EvaluateBackgroundRefreshEligibility(),
       evaluateNotificationRules: const EvaluateNotificationRules(),
       sendQuotaNotification: SendQuotaNotification(notificationRepository),
+      onLatestSnapshotCheckedForWidget: onLatestSnapshotCheckedForWidget,
     );
   }
 
@@ -199,6 +202,29 @@ void main() {
 
     expect(result.notificationsSent, 0);
     expect(notifications.sent, isEmpty);
+  });
+
+  test('notify-only check updates widget metadata when snapshot exists', () async {
+    final snapshot = QuotaSnapshotModel.mock(
+      capturedAt: now.subtract(const Duration(hours: 2)),
+      variant: 1,
+    );
+    final background = _FakeBackgroundRepository(
+      settings: notifySettings(),
+      snapshot: snapshot,
+    );
+    final notifications = _FakeNotificationRepository();
+    final widgetSnapshots = <QuotaSnapshot>[];
+
+    await buildUsecase(
+      backgroundRepository: background,
+      notificationRepository: notifications,
+      onLatestSnapshotCheckedForWidget: (snapshot) async {
+        widgetSnapshots.add(snapshot);
+      },
+    )(now: now);
+
+    expect(widgetSnapshots.single.id, snapshot.id);
   });
 }
 

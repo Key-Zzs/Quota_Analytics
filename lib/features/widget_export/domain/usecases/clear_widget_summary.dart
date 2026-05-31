@@ -1,4 +1,5 @@
 import '../entities/widget_export_result.dart';
+import '../entities/widget_update_reason.dart';
 import '../repositories/widget_summary_repository.dart';
 
 class ClearWidgetSummary {
@@ -6,7 +7,9 @@ class ClearWidgetSummary {
 
   final WidgetSummaryRepository repository;
 
-  Future<WidgetExportResult> call() {
-    return repository.clearSummary();
+  Future<WidgetExportResult> call({
+    String updateReason = WidgetUpdateReason.clearWidgetSummary,
+  }) {
+    return repository.clearSummary(updateReason: updateReason);
   }
 }

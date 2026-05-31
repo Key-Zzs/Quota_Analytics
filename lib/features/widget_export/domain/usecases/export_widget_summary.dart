@@ -1,5 +1,6 @@
 import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../entities/widget_export_result.dart';
+import '../entities/widget_update_reason.dart';
 import '../repositories/widget_summary_repository.dart';
 
 class ExportWidgetSummary {
@@ -7,7 +8,10 @@ class ExportWidgetSummary {
 
   final WidgetSummaryRepository repository;
 
-  Future<WidgetExportResult> call(QuotaSnapshot snapshot) {
-    return repository.exportSummary(snapshot);
+  Future<WidgetExportResult> call(
+    QuotaSnapshot snapshot, {
+    String updateReason = WidgetUpdateReason.debugExport,
+  }) {
+    return repository.exportSummary(snapshot, updateReason: updateReason);
   }
 }

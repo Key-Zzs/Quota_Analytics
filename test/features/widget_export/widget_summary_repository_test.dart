@@ -44,6 +44,7 @@ void main() {
       expect(result.success, isTrue);
       expect(notifier.syncSummaryCalls, 1);
       expect(notifier.updateWidgetsCalls, 1);
+      expect(notifier.lastUpdateReason, 'snapshotSaved');
       expect(notifier.syncedSummary?.id, snapshot.id);
       expect(result.widgetUpdateResult?.success, isTrue);
     },
@@ -102,6 +103,7 @@ void main() {
     expect((await repository.getMetadata()).status, WidgetExportStatus.cleared);
     expect(notifier.clearSummaryCalls, 1);
     expect(notifier.updateWidgetsCalls, 1);
+    expect(notifier.lastUpdateReason, 'clearWidgetSummary');
   });
 
   test('missing summary returns no data state', () async {
@@ -156,12 +158,14 @@ class _RecordingWidgetUpdateNotifier implements WidgetUpdateNotifier {
   int syncSummaryCalls = 0;
   int clearSummaryCalls = 0;
   int updateWidgetsCalls = 0;
+  String? lastUpdateReason;
   WidgetSnapshotSummary? syncedSummary;
 
   void resetCounts() {
     syncSummaryCalls = 0;
     clearSummaryCalls = 0;
     updateWidgetsCalls = 0;
+    lastUpdateReason = null;
   }
 
   @override
@@ -178,16 +182,24 @@ class _RecordingWidgetUpdateNotifier implements WidgetUpdateNotifier {
   }
 
   @override
-  Future<WidgetUpdateResult> updateWidgets() async {
+  Future<WidgetUpdateResult> updateWidgets({
+    String reason = 'unspecified',
+  }) async {
     updateWidgetsCalls += 1;
+    lastUpdateReason = reason;
     if (failUpdate) {
       return WidgetUpdateResult.failed(
         operation: 'update_widgets',
+        reason: reason,
         sentAt: now,
         safeError: 'failed token=<redacted>',
       );
     }
-    return WidgetUpdateResult.success(operation: 'update_widgets', sentAt: now);
+    return WidgetUpdateResult.success(
+      operation: 'update_widgets',
+      reason: reason,
+      sentAt: now,
+    );
   }
 
   @override

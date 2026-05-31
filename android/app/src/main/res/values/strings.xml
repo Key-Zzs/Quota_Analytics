@@ -5,6 +5,9 @@
     <string name="quota_widget_no_data">No quota data</string>
     <string name="quota_widget_no_data_short">No data</string>
     <string name="quota_widget_open_app">Open app to refresh</string>
+    <string name="quota_widget_refresh">Refresh</string>
+    <string name="quota_widget_stale">Stale</string>
+    <string name="quota_widget_stale_open_app">Stale &#183; open app to refresh</string>
     <string name="quota_widget_error">Widget data unavailable</string>
     <string name="quota_widget_updated_none">Updated --:--</string>
     <string name="quota_widget_updated_at">Updated %1$s</string>

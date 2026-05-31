@@ -36,6 +36,22 @@
             android:textSize="10sp"
             android:textStyle="bold"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/quota_widget_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginLeft="6dp"
+            android:background="@drawable/quota_widget_badge_background"
+            android:gravity="center"
+            android:maxLines="1"
+            android:minWidth="54dp"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:text="@string/quota_widget_refresh"
+            android:textColor="@color/quota_widget_badge_text"
+            android:textSize="10sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <TextView

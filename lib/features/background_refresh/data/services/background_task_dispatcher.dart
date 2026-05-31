@@ -11,6 +11,10 @@ import '../../../notifications/data/datasources/notification_metadata_datasource
 import '../../../notifications/data/repositories/local_notification_repository.dart';
 import '../../../notifications/domain/usecases/evaluate_notification_rules.dart';
 import '../../../notifications/domain/usecases/send_quota_notification.dart';
+import '../../../widget_export/data/datasources/local_widget_summary_datasource.dart';
+import '../../../widget_export/data/mappers/quota_snapshot_to_widget_summary_mapper.dart';
+import '../../../widget_export/data/repositories/widget_summary_repository_impl.dart';
+import '../../../widget_export/domain/entities/widget_update_reason.dart';
 import '../../domain/usecases/evaluate_background_refresh_eligibility.dart';
 import '../../domain/usecases/run_background_refresh_check.dart';
 import '../datasources/local_background_refresh_datasource.dart';
@@ -42,12 +46,23 @@ void quotaBackgroundTaskDispatcher() {
       metadataDataSource: NotificationMetadataDataSource(storage: storage),
       clock: clock,
     );
+    final widgetSummaryRepository = WidgetSummaryRepositoryImpl(
+      dataSource: LocalWidgetSummaryDataSource(storage: storage),
+      mapper: const QuotaSnapshotToWidgetSummaryMapper(),
+      clock: clock,
+    );
     final runCheck = RunBackgroundRefreshCheck(
       backgroundRepository: backgroundRepository,
       notificationRepository: notificationRepository,
       evaluateEligibility: const EvaluateBackgroundRefreshEligibility(),
       evaluateNotificationRules: const EvaluateNotificationRules(),
       sendQuotaNotification: SendQuotaNotification(notificationRepository),
+      onLatestSnapshotCheckedForWidget: (snapshot) {
+        return widgetSummaryRepository.exportSummary(
+          snapshot,
+          updateReason: WidgetUpdateReason.backgroundNotifyOnlyCheck,
+        );
+      },
     );
     final result = await runCheck(now: clock.now());
     return result.errors.isEmpty;

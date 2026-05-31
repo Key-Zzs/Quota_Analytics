@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.keyzzs.quota_analytics.MainActivity
 import com.keyzzs.quota_analytics.R
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -19,6 +20,9 @@ import kotlin.math.roundToInt
 
 object QuotaWidgetUpdater {
     private const val MEDIUM_MIN_WIDTH_DP = 220
+    private const val STALE_AFTER_MINUTES = 30L
+    private const val REQUEST_OPEN_QUOTA = 100
+    private const val REQUEST_OPEN_REFRESH = 101
 
     fun updateAll(context: Context) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
@@ -68,7 +72,21 @@ object QuotaWidgetUpdater {
 
         views.setOnClickPendingIntent(
             R.id.quota_widget_root,
-            openAppPendingIntent(context),
+            openAppPendingIntent(
+                context,
+                target = QuotaWidgetConstants.TARGET_QUOTA,
+                action = QuotaWidgetConstants.ACTION_OPEN_QUOTA,
+                requestCode = REQUEST_OPEN_QUOTA,
+            ),
+        )
+        views.setOnClickPendingIntent(
+            R.id.quota_widget_refresh,
+            openAppPendingIntent(
+                context,
+                target = QuotaWidgetConstants.TARGET_REFRESH_USAGE_PAGE,
+                action = QuotaWidgetConstants.ACTION_OPEN_REFRESH_FLOW,
+                requestCode = REQUEST_OPEN_REFRESH,
+            ),
         )
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
@@ -107,7 +125,11 @@ object QuotaWidgetUpdater {
                 )
                 views.setTextViewText(
                     R.id.last_updated,
-                    formatUpdated(context, summary.lastUpdatedAt ?: summary.exportedAt),
+                    if (summary.isEffectivelyStale()) {
+                        context.getString(R.string.quota_widget_stale_open_app)
+                    } else {
+                        formatUpdated(context, summary.lastUpdatedAt ?: summary.exportedAt)
+                    },
                 )
                 bindStatusBadge(views, summary)
             }
@@ -163,11 +185,15 @@ object QuotaWidgetUpdater {
                 }
                 views.setTextViewText(
                     R.id.source_confidence,
-                    context.getString(
-                        R.string.quota_widget_source_confidence,
-                        formatConfidence(summary.parserConfidence),
-                        formatSource(summary.source),
-                    ),
+                    if (summary.isEffectivelyStale()) {
+                        context.getString(R.string.quota_widget_open_app)
+                    } else {
+                        context.getString(
+                            R.string.quota_widget_source_confidence,
+                            formatConfidence(summary.parserConfidence),
+                            formatSource(summary.source),
+                        )
+                    },
                 )
                 views.setTextViewText(
                     R.id.last_updated,
@@ -202,7 +228,7 @@ object QuotaWidgetUpdater {
     private fun bindStatusBadge(views: RemoteViews, summary: QuotaWidgetSummary) {
         val status = summary.statusLabel?.uppercase(Locale.US)
         val label = when {
-            summary.isStale -> "Stale"
+            summary.isEffectivelyStale() -> "Stale"
             status == "LOW" -> "Low"
             status == "OK" -> "OK"
             !summary.errorLabel.isNullOrBlank() -> summary.errorLabel
@@ -214,6 +240,14 @@ object QuotaWidgetUpdater {
             views.setViewVisibility(R.id.stale_badge, View.VISIBLE)
             views.setTextViewText(R.id.stale_badge, label)
         }
+    }
+
+    private fun QuotaWidgetSummary.isEffectivelyStale(): Boolean {
+        if (isStale) {
+            return true
+        }
+        val updatedAt = lastUpdatedAt ?: exportedAt ?: return false
+        return Duration.between(updatedAt, Instant.now()).toMinutes() > STALE_AFTER_MINUTES
     }
 
     private fun formatRatio(value: Double?): String {
@@ -270,14 +304,31 @@ object QuotaWidgetUpdater {
         }
     }
 
-    private fun openAppPendingIntent(context: Context): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(QuotaWidgetConstants.EXTRA_OPEN_ROUTE, QuotaWidgetConstants.OPEN_ROUTE_QUOTA)
+    fun openAppIntent(
+        context: Context,
+        target: String,
+        action: String,
+    ): Intent {
+        return Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(QuotaWidgetConstants.EXTRA_SOURCE, QuotaWidgetConstants.SOURCE_WIDGET)
+            putExtra(QuotaWidgetConstants.EXTRA_TARGET, target)
+            putExtra(QuotaWidgetConstants.EXTRA_OPEN_ROUTE, target)
+            putExtra(QuotaWidgetConstants.EXTRA_ACTION, action)
         }
+    }
+
+    private fun openAppPendingIntent(
+        context: Context,
+        target: String,
+        action: String,
+        requestCode: Int,
+    ): PendingIntent {
+        val intent = openAppIntent(context, target, action)
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
-        return PendingIntent.getActivity(context, 0, intent, flags)
+        return PendingIntent.getActivity(context, requestCode, intent, flags)
     }
 }

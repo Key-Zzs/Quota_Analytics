@@ -61,12 +61,24 @@ class WidgetExportStatusCard extends StatelessWidget {
               value: formatDateTime(controller.lastWidgetUpdateResult.sentAt),
             ),
             _Row(
+              label: 'Last widget update reason',
+              value: controller.lastWidgetUpdateReason ?? 'none',
+            ),
+            _Row(
               label: 'Last widget update status',
               value: controller.lastWidgetUpdateResult.status.label,
             ),
             _Row(
               label: 'Last widget update error',
               value: controller.lastWidgetUpdateError ?? 'none',
+            ),
+            _Row(
+              label: 'Last widget click source',
+              value: controller.lastWidgetLaunchSource ?? 'none',
+            ),
+            _Row(
+              label: 'Last widget click target',
+              value: controller.lastWidgetLaunchTarget ?? 'none',
             ),
             _Row(
               label: 'schemaVersion',
@@ -87,6 +99,8 @@ class WidgetExportStatusCard extends StatelessWidget {
             const Text(
               'Widget does not login, parse pages, or access WebView.',
             ),
+            const Text('Widget refresh updates the widget view only.'),
+            const Text('Widget does not refresh the web page in background.'),
             const SizedBox(height: 12),
             WidgetSummaryPreviewCard(summary: summary),
             if (controller.message != null) ...[
@@ -109,7 +123,7 @@ class WidgetExportStatusCard extends StatelessWidget {
                       ? null
                       : () => unawaited(controller.exportNow(latestSnapshot)),
                   icon: const Icon(Icons.ios_share_outlined),
-                  label: const Text('Export and update widget now'),
+                  label: const Text('Export summary and update widgets now'),
                 ),
                 OutlinedButton.icon(
                   onPressed: controller.isBusy
@@ -123,7 +137,7 @@ class WidgetExportStatusCard extends StatelessWidget {
                       ? null
                       : () => unawaited(controller.clearSummary()),
                   icon: const Icon(Icons.delete_outline),
-                  label: const Text('Clear widget summary'),
+                  label: const Text('Clear widget summary and update widgets'),
                 ),
               ],
             ),

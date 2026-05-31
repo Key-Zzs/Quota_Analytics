@@ -1,5 +1,32 @@
 # Security
 
+## Stage 11 Android Widget Refresh Integration Boundary
+
+Stage 11 keeps the Android widget inside the Stage 9/10 display-safe boundary.
+Widget refresh means either updating `RemoteViews` from the latest exported
+`WidgetSnapshotSummary` or opening the foreground app refresh entry. It does not
+mean background webpage refresh.
+
+The Flutter to Android MethodChannel is `quota_analytics/widget`. The
+`updateQuotaWidgets` method carries only a safe reason enum and timestamp. It
+does not transfer raw quota text, page text, parser input, cookies, tokens,
+browser storage, account email, URLs, or summary JSON.
+
+Widget click extras are limited to safe enum strings:
+
+- `source = widget`
+- `target = quota` or `refreshUsagePage`
+- `action = openQuota` or `openRefreshFlow`
+
+The widget refresh button opens the app to the visible refresh flow entry. The
+widget provider and updater do not open WebView, do not login, do not execute
+JavaScript, do not read `document.body.innerText`, do not parse pages, do not
+read cookie/token/localStorage/sessionStorage, and do not access network data.
+
+Android `AppWidgetManager.updateAppWidget` is used only to redraw installed
+widgets from the display-safe summary. No dangerous permissions, foreground
+service, exact alarm, hidden WebView, or background web refresh is added.
+
 ## Stage 10 Android Widget Boundary
 
 Stage 10 adds a native Android home screen widget shell. The widget reads only

@@ -234,6 +234,23 @@ class SettingsPage extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Android Widget'),
+                    SizedBox(height: 8),
+                    Text('Widget updates after quota refresh/export/clear.'),
+                    Text('Widget refresh opens the app refresh flow entry.'),
+                    Text('Widget refresh updates widget view only.'),
+                    Text('Widget does not refresh web page in background.'),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Local data',

@@ -219,7 +219,9 @@ class _FakeWidgetSummaryRepository implements WidgetSummaryRepository {
   int clearCount = 0;
 
   @override
-  Future<WidgetExportResult> clearSummary() async {
+  Future<WidgetExportResult> clearSummary({
+    String updateReason = 'clearWidgetSummary',
+  }) async {
     clearCount += 1;
     return const WidgetExportResult(
       status: WidgetExportStatus.cleared,
@@ -230,7 +232,10 @@ class _FakeWidgetSummaryRepository implements WidgetSummaryRepository {
   }
 
   @override
-  Future<WidgetExportResult> exportSummary(QuotaSnapshot snapshot) async {
+  Future<WidgetExportResult> exportSummary(
+    QuotaSnapshot snapshot, {
+    String updateReason = 'snapshotSaved',
+  }) async {
     if (throwOnExport) {
       throw StateError('widget write failed');
     }

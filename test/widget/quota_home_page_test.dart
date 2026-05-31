@@ -16,6 +16,8 @@ import 'package:quota_analytics/features/settings/data/models/app_settings_model
 import 'package:quota_analytics/features/settings/domain/entities/app_settings.dart';
 import 'package:quota_analytics/features/settings/domain/entities/refresh_interval.dart';
 import 'package:quota_analytics/features/refresh/domain/entities/manual_refresh_policy.dart';
+import 'package:quota_analytics/features/widget_export/domain/entities/widget_launch_action.dart';
+import 'package:quota_analytics/features/widget_export/domain/repositories/widget_launch_channel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -24,7 +26,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('5-hour window'), findsOneWidget);
-    expect(find.textContaining('Stage 10:'), findsOneWidget);
+    expect(find.textContaining('Stage 11:'), findsOneWidget);
     expect(find.text('Go to Web Refresh'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -68,6 +70,32 @@ void main() {
 
     expect(find.byTooltip('Refresh usage page'), findsOneWidget);
     expect(find.byTooltip('Refresh mock quota'), findsNothing);
+  });
+
+  testWidgets('widget refresh launch opens quota page with visible prompt', (
+    tester,
+  ) async {
+    final launchChannel = _FakeWidgetLaunchChannel();
+    await tester.pumpWidget(
+      _buildInjectedApp(widgetLaunchChannel: launchChannel),
+    );
+    await tester.pumpAndSettle();
+
+    launchChannel.emit(
+      const WidgetLaunchAction(
+        source: WidgetLaunchSource.widget,
+        target: WidgetLaunchTarget.refreshUsagePage,
+        action: WidgetLaunchIntentAction.openRefreshFlow,
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Go to Web Refresh'), findsOneWidget);
+    expect(
+      find.text('Opened from widget. Tap Refresh usage page to update.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Settings page displays and updates refresh interval', (
@@ -121,6 +149,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings saved'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Android Widget'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('Android Widget'), findsOneWidget);
+    expect(
+      find.text('Widget does not refresh web page in background.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Debug page displays persisted history count', (tester) async {
@@ -225,7 +265,7 @@ void main() {
   });
 }
 
-Widget _buildInjectedApp() {
+Widget _buildInjectedApp({WidgetLaunchChannel? widgetLaunchChannel}) {
   return QuotaAnalyticsApp(
     quotaRepository: MockQuotaRepository(
       MockQuotaDataSource(
@@ -234,7 +274,29 @@ Widget _buildInjectedApp() {
       ),
     ),
     settingsRepository: MockSettingsRepository(),
+    widgetLaunchChannel: widgetLaunchChannel,
   );
+}
+
+class _FakeWidgetLaunchChannel implements WidgetLaunchChannel {
+  _FakeWidgetLaunchChannel({this.initialAction});
+
+  final WidgetLaunchAction? initialAction;
+  WidgetLaunchActionHandler? _handler;
+
+  @override
+  Future<WidgetLaunchAction?> consumeInitialLaunchAction() async {
+    return initialAction;
+  }
+
+  @override
+  void setLaunchActionHandler(WidgetLaunchActionHandler? handler) {
+    _handler = handler;
+  }
+
+  void emit(WidgetLaunchAction action) {
+    _handler?.call(action);
+  }
 }
 
 class _TickingClock implements Clock {

@@ -11,7 +11,7 @@ import 'package:quota_analytics/features/widget_export/domain/entities/widget_up
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channel = MethodChannel('quota_analytics/android_widget');
+  const channel = MethodChannel('quota_analytics/widget');
   final now = DateTime.utc(2026, 5, 26, 10, 30);
 
   tearDown(() {
@@ -36,6 +36,7 @@ void main() {
 
     expect(result.status, WidgetUpdateSignalStatus.success);
     expect(result.sentAt, now);
+    expect(result.reason, 'unspecified');
     expect(calls.single.method, 'updateQuotaWidgets');
   });
 
@@ -76,7 +77,7 @@ void main() {
     expect(called, isFalse);
   });
 
-  test('update signal sends no payload', () async {
+  test('update signal sends safe reason and timestamp payload', () async {
     Object? arguments;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
@@ -89,9 +90,15 @@ void main() {
       clock: FixedClock(now),
     );
 
-    await notifier.updateWidgets();
+    await notifier.updateWidgets(reason: 'manualRefresh');
 
-    expect(arguments, isNull);
+    final payload = arguments as Map<dynamic, dynamic>;
+    expect(payload['reason'], 'manualRefresh');
+    expect(payload['timestamp'], now.toIso8601String());
+    expect(payload.keys, isNot(contains('summaryJson')));
+    expect(payload.keys, isNot(contains('rawPageText')));
+    expect(payload.keys, isNot(contains('cookie')));
+    expect(payload.keys, isNot(contains('token')));
   });
 
   test(

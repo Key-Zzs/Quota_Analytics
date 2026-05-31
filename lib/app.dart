@@ -59,9 +59,13 @@ import 'features/settings/presentation/controllers/settings_controller.dart';
 import 'features/settings/presentation/pages/settings_page.dart';
 import 'features/widget_export/data/datasources/local_widget_summary_datasource.dart';
 import 'features/widget_export/data/mappers/quota_snapshot_to_widget_summary_mapper.dart';
+import 'features/widget_export/data/platform/android_widget_launch_channel.dart';
 import 'features/widget_export/data/platform/android_widget_update_channel.dart';
 import 'features/widget_export/data/repositories/widget_exporting_quota_repository.dart';
 import 'features/widget_export/data/repositories/widget_summary_repository_impl.dart';
+import 'features/widget_export/domain/entities/widget_launch_action.dart';
+import 'features/widget_export/domain/entities/widget_update_reason.dart';
+import 'features/widget_export/domain/repositories/widget_launch_channel.dart';
 import 'features/widget_export/domain/usecases/clear_widget_summary.dart';
 import 'features/widget_export/domain/usecases/export_widget_summary.dart';
 import 'features/widget_export/domain/usecases/get_widget_summary.dart';
@@ -75,6 +79,7 @@ class QuotaAnalyticsApp extends StatelessWidget {
     this.settingsRepository,
     this.pageTextExtractionRepository,
     this.quotaParserRepository,
+    this.widgetLaunchChannel,
     this.clock,
   });
 
@@ -82,6 +87,7 @@ class QuotaAnalyticsApp extends StatelessWidget {
   final SettingsRepository? settingsRepository;
   final PageTextExtractionRepository? pageTextExtractionRepository;
   final QuotaParserRepository? quotaParserRepository;
+  final WidgetLaunchChannel? widgetLaunchChannel;
   final Clock? clock;
 
   @override
@@ -96,6 +102,7 @@ class QuotaAnalyticsApp extends StatelessWidget {
         settingsRepository: settingsRepository,
         pageTextExtractionRepository: pageTextExtractionRepository,
         quotaParserRepository: quotaParserRepository,
+        widgetLaunchChannel: widgetLaunchChannel,
         clock: clock,
       ),
     );
@@ -109,6 +116,7 @@ class QuotaShell extends StatefulWidget {
     this.settingsRepository,
     this.pageTextExtractionRepository,
     this.quotaParserRepository,
+    this.widgetLaunchChannel,
     this.clock,
   });
 
@@ -116,6 +124,7 @@ class QuotaShell extends StatefulWidget {
   final SettingsRepository? settingsRepository;
   final PageTextExtractionRepository? pageTextExtractionRepository;
   final QuotaParserRepository? quotaParserRepository;
+  final WidgetLaunchChannel? widgetLaunchChannel;
   final Clock? clock;
 
   @override
@@ -124,18 +133,24 @@ class QuotaShell extends StatefulWidget {
 
 class _QuotaShellState extends State<QuotaShell> {
   late final Future<_AppControllers> _controllersFuture;
+  late final WidgetLaunchChannel _widgetLaunchChannel;
   _AppControllers? _controllers;
+  WidgetLaunchAction? _pendingWidgetLaunchAction;
   Widget? _webLoginPage;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _widgetLaunchChannel =
+        widget.widgetLaunchChannel ?? AndroidWidgetLaunchChannel();
+    _widgetLaunchChannel.setLaunchActionHandler(_queueWidgetLaunchAction);
     _controllersFuture = _createControllers();
   }
 
   @override
   void dispose() {
+    _widgetLaunchChannel.setLaunchActionHandler(null);
     _controllers?.dispose();
     super.dispose();
   }
@@ -518,6 +533,12 @@ class _QuotaShellState extends State<QuotaShell> {
       evaluateEligibility: const EvaluateBackgroundRefreshEligibility(),
       evaluateNotificationRules: const EvaluateNotificationRules(),
       sendQuotaNotification: SendQuotaNotification(notificationRepository),
+      onLatestSnapshotCheckedForWidget: (snapshot) {
+        return widgetSummaryRepository.exportSummary(
+          snapshot,
+          updateReason: WidgetUpdateReason.backgroundNotifyOnlyCheck,
+        );
+      },
     );
     final backgroundRefreshController = BackgroundRefreshSettingsController(
       backgroundRepository: backgroundRefreshRepository,
@@ -560,6 +581,7 @@ class _QuotaShellState extends State<QuotaShell> {
       controllers.backgroundRefreshController.load(),
     ]);
     await controllers.widgetExportController.load();
+    await _consumeInitialWidgetLaunchAction(controllers);
 
     return controllers;
   }
@@ -582,7 +604,65 @@ class _QuotaShellState extends State<QuotaShell> {
     controllers.quotaParserController.clearParseResult();
     await controllers.manualRefreshController.clearLastResult();
     await controllers.backgroundRefreshController.clear();
-    await controllers.widgetExportController.clearSummary();
+    await controllers.widgetExportController.clearSummary(
+      updateReason: WidgetUpdateReason.clearData,
+    );
+  }
+
+  Future<void> _consumeInitialWidgetLaunchAction(
+    _AppControllers controllers,
+  ) async {
+    final initialAction = await _widgetLaunchChannel.consumeInitialLaunchAction();
+    final action = initialAction ?? _pendingWidgetLaunchAction;
+    if (action == null) {
+      return;
+    }
+    _pendingWidgetLaunchAction = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _applyWidgetLaunchAction(action, controllers);
+    });
+  }
+
+  void _queueWidgetLaunchAction(WidgetLaunchAction action) {
+    final controllers = _controllers;
+    if (controllers == null || !mounted) {
+      _pendingWidgetLaunchAction = action;
+      return;
+    }
+    _applyWidgetLaunchAction(action, controllers);
+  }
+
+  void _applyWidgetLaunchAction(
+    WidgetLaunchAction action,
+    _AppControllers controllers,
+  ) {
+    final decision = const WidgetLaunchRouter().resolve(action);
+    controllers.widgetExportController.recordWidgetLaunchAction(
+      source: action.source,
+      target: action.target,
+    );
+    setState(() {
+      _selectedIndex = 0;
+    });
+
+    if (decision.destination == WidgetLaunchDestination.refreshUsagePage ||
+        decision.showRefreshPrompt) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Opened from widget. Tap Refresh usage page to update.',
+            ),
+          ),
+        );
+      });
+    }
   }
 
   String _titleForIndex(int index) {

@@ -27,6 +27,7 @@ void main() {
 
     expect(controller.lastWidgetUpdateResult.success, isTrue);
     expect(controller.lastWidgetUpdateResult.operation, 'update_widgets');
+    expect(controller.lastWidgetUpdateReason, 'debugUpdate');
     expect(controller.lastWidgetUpdateResult.sentAt, now);
     expect(controller.message, 'Android widget update signal sent.');
   });
@@ -95,18 +96,23 @@ class _FakeWidgetUpdateNotifier implements WidgetUpdateNotifier {
   }
 
   @override
-  Future<WidgetUpdateResult> updateWidgets() async {
+  Future<WidgetUpdateResult> updateWidgets({String reason = 'unspecified'}) async {
     if (throwOnUpdate) {
       throw StateError('failed token=secret');
     }
     if (failUpdate) {
       return WidgetUpdateResult.failed(
         operation: 'update_widgets',
+        reason: reason,
         sentAt: now,
         safeError: 'update failed',
       );
     }
-    return WidgetUpdateResult.success(operation: 'update_widgets', sentAt: now);
+    return WidgetUpdateResult.success(
+      operation: 'update_widgets',
+      reason: reason,
+      sentAt: now,
+    );
   }
 
   @override

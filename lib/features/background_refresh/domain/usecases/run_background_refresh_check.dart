@@ -2,6 +2,7 @@ import '../../../notifications/domain/entities/notification_candidate.dart';
 import '../../../notifications/domain/repositories/notification_repository.dart';
 import '../../../notifications/domain/usecases/evaluate_notification_rules.dart';
 import '../../../notifications/domain/usecases/send_quota_notification.dart';
+import '../../../quota/domain/entities/quota_snapshot.dart';
 import '../entities/background_refresh_eligibility.dart';
 import '../entities/background_refresh_result.dart';
 import '../entities/background_refresh_status.dart';
@@ -15,6 +16,7 @@ class RunBackgroundRefreshCheck {
     required this.evaluateEligibility,
     required this.evaluateNotificationRules,
     required this.sendQuotaNotification,
+    this.onLatestSnapshotCheckedForWidget,
   });
 
   final BackgroundRefreshRepository backgroundRepository;
@@ -22,6 +24,8 @@ class RunBackgroundRefreshCheck {
   final EvaluateBackgroundRefreshEligibility evaluateEligibility;
   final EvaluateNotificationRules evaluateNotificationRules;
   final SendQuotaNotification sendQuotaNotification;
+  final Future<void> Function(QuotaSnapshot snapshot)?
+  onLatestSnapshotCheckedForWidget;
 
   Future<BackgroundRefreshResult> call({required DateTime now}) async {
     final running = BackgroundRefreshResult.running(now);
@@ -51,6 +55,7 @@ class RunBackgroundRefreshCheck {
       );
 
       if (!eligibility.shouldRunLocalCheck) {
+        await _updateWidgetMetadataSafely(latestSnapshot);
         final result = running.finish(
           status: _statusForSkippedEligibility(eligibility),
           finishedAt: now,
@@ -88,6 +93,7 @@ class RunBackgroundRefreshCheck {
         eligibility: eligibility,
         sentCandidates: sentCandidates,
       );
+      await _updateWidgetMetadataSafely(latestSnapshot);
       final result = running.finish(
         status: status,
         finishedAt: now,
@@ -104,6 +110,18 @@ class RunBackgroundRefreshCheck {
         errors: ['Background refresh check failed: $error'],
       );
       return backgroundRepository.saveLastResult(result);
+    }
+  }
+
+  Future<void> _updateWidgetMetadataSafely(QuotaSnapshot? snapshot) async {
+    final callback = onLatestSnapshotCheckedForWidget;
+    if (snapshot == null || callback == null) {
+      return;
+    }
+    try {
+      await callback(snapshot);
+    } on Object {
+      // Widget metadata refresh is best-effort and must not block notify-only checks.
     }
   }
 

@@ -6,6 +6,7 @@ import '../../domain/entities/widget_export_result.dart';
 import '../../domain/entities/widget_export_status.dart';
 import '../../domain/entities/widget_snapshot_summary.dart';
 import '../../domain/entities/widget_update_result.dart';
+import '../../domain/entities/widget_update_reason.dart';
 import '../../domain/repositories/widget_summary_repository.dart';
 import '../../domain/repositories/widget_update_notifier.dart';
 import '../datasources/local_widget_summary_datasource.dart';
@@ -25,12 +26,18 @@ class WidgetSummaryRepositoryImpl implements WidgetSummaryRepository {
   final WidgetUpdateNotifier widgetUpdateNotifier;
 
   @override
-  Future<WidgetExportResult> exportSummary(QuotaSnapshot snapshot) async {
+  Future<WidgetExportResult> exportSummary(
+    QuotaSnapshot snapshot, {
+    String updateReason = WidgetUpdateReason.snapshotSaved,
+  }) async {
     final exportedAt = clock.now();
     try {
       final summary = mapper.map(snapshot, clock: clock);
       await dataSource.saveSummary(summary);
-      final widgetUpdateResult = await _syncSummaryAndUpdate(summary);
+      final widgetUpdateResult = await _syncSummaryAndUpdate(
+        summary,
+        updateReason: updateReason,
+      );
       return WidgetExportResult(
         status: WidgetExportStatus.success,
         summary: summary,
@@ -61,11 +68,15 @@ class WidgetSummaryRepositoryImpl implements WidgetSummaryRepository {
   }
 
   @override
-  Future<WidgetExportResult> clearSummary() async {
+  Future<WidgetExportResult> clearSummary({
+    String updateReason = WidgetUpdateReason.clearWidgetSummary,
+  }) async {
     final clearedAt = clock.now();
     try {
       await dataSource.clearSummary(clearedAt: clearedAt);
-      final widgetUpdateResult = await _clearNativeSummaryAndUpdate();
+      final widgetUpdateResult = await _clearNativeSummaryAndUpdate(
+        updateReason: updateReason,
+      );
       return WidgetExportResult(
         status: WidgetExportStatus.cleared,
         summary: null,
@@ -86,8 +97,9 @@ class WidgetSummaryRepositoryImpl implements WidgetSummaryRepository {
   }
 
   Future<WidgetUpdateResult> _syncSummaryAndUpdate(
-    WidgetSnapshotSummary summary,
-  ) async {
+    WidgetSnapshotSummary summary, {
+    required String updateReason,
+  }) async {
     final syncResult = await _tryWidgetUpdateSideEffect(
       () => widgetUpdateNotifier.syncSummary(summary),
       operation: 'sync_summary',
@@ -96,12 +108,15 @@ class WidgetSummaryRepositoryImpl implements WidgetSummaryRepository {
       return syncResult;
     }
     return _tryWidgetUpdateSideEffect(
-      widgetUpdateNotifier.updateWidgets,
+      () => widgetUpdateNotifier.updateWidgets(reason: updateReason),
       operation: 'update_widgets',
+      reason: updateReason,
     );
   }
 
-  Future<WidgetUpdateResult> _clearNativeSummaryAndUpdate() async {
+  Future<WidgetUpdateResult> _clearNativeSummaryAndUpdate({
+    required String updateReason,
+  }) async {
     final clearResult = await _tryWidgetUpdateSideEffect(
       widgetUpdateNotifier.clearSummary,
       operation: 'clear_summary',
@@ -110,14 +125,16 @@ class WidgetSummaryRepositoryImpl implements WidgetSummaryRepository {
       return clearResult;
     }
     return _tryWidgetUpdateSideEffect(
-      widgetUpdateNotifier.updateWidgets,
+      () => widgetUpdateNotifier.updateWidgets(reason: updateReason),
       operation: 'update_widgets',
+      reason: updateReason,
     );
   }
 
   Future<WidgetUpdateResult> _tryWidgetUpdateSideEffect(
     Future<WidgetUpdateResult> Function() action, {
     required String operation,
+    String? reason,
   }) async {
     final attemptedAt = clock.now();
     try {
@@ -125,6 +142,7 @@ class WidgetSummaryRepositoryImpl implements WidgetSummaryRepository {
     } on Object catch (error) {
       return WidgetUpdateResult.failed(
         operation: operation,
+        reason: reason,
         sentAt: attemptedAt,
         safeError: SensitiveDataPolicy.sanitizeLogText(error.toString()),
       );

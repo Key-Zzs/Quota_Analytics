@@ -36,8 +36,22 @@ void main() {
     expect(find.text('Widget Export'), findsOneWidget);
     expect(find.text('Widget export enabled'), findsOneWidget);
     expect(find.text('Update Android widgets now'), findsOneWidget);
-    expect(find.text('Export and update widget now'), findsOneWidget);
-    expect(find.text('Clear widget summary'), findsOneWidget);
+    expect(
+      find.text('Export summary and update widgets now'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Clear widget summary and update widgets'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Widget refresh updates the widget view only.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Widget does not refresh the web page in background.'),
+      findsOneWidget,
+    );
     expect(
       find.text('Widget reads display-safe summary only.'),
       findsOneWidget,
@@ -109,8 +123,14 @@ void main() {
     );
 
     expect(find.text('Update Android widgets now'), findsOneWidget);
-    expect(find.text('Export and update widget now'), findsOneWidget);
-    expect(find.text('Clear widget summary'), findsOneWidget);
+    expect(
+      find.text('Export summary and update widgets now'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Clear widget summary and update widgets'),
+      findsOneWidget,
+    );
   });
 }
 

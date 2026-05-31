@@ -14,6 +14,7 @@ extension WidgetUpdateSignalStatusLabel on WidgetUpdateSignalStatus {
 class WidgetUpdateResult {
   const WidgetUpdateResult({
     required this.operation,
+    required this.reason,
     required this.status,
     required this.sentAt,
     required this.safeError,
@@ -22,6 +23,7 @@ class WidgetUpdateResult {
   factory WidgetUpdateResult.idle() {
     return const WidgetUpdateResult(
       operation: 'none',
+      reason: null,
       status: WidgetUpdateSignalStatus.idle,
       sentAt: null,
       safeError: null,
@@ -31,9 +33,11 @@ class WidgetUpdateResult {
   factory WidgetUpdateResult.success({
     required String operation,
     required DateTime sentAt,
+    String? reason,
   }) {
     return WidgetUpdateResult(
       operation: operation,
+      reason: reason,
       status: WidgetUpdateSignalStatus.success,
       sentAt: sentAt,
       safeError: null,
@@ -44,9 +48,11 @@ class WidgetUpdateResult {
     required String operation,
     required DateTime sentAt,
     required String safeError,
+    String? reason,
   }) {
     return WidgetUpdateResult(
       operation: operation,
+      reason: reason,
       status: WidgetUpdateSignalStatus.failed,
       sentAt: sentAt,
       safeError: safeError,
@@ -57,9 +63,11 @@ class WidgetUpdateResult {
     required String operation,
     DateTime? sentAt,
     String? safeError,
+    String? reason,
   }) {
     return WidgetUpdateResult(
       operation: operation,
+      reason: reason,
       status: WidgetUpdateSignalStatus.skipped,
       sentAt: sentAt,
       safeError: safeError,
@@ -67,6 +75,7 @@ class WidgetUpdateResult {
   }
 
   final String operation;
+  final String? reason;
   final WidgetUpdateSignalStatus status;
   final DateTime? sentAt;
   final String? safeError;

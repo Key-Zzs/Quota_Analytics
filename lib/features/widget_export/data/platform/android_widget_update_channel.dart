@@ -8,6 +8,7 @@ import '../../../../core/time/clock.dart';
 import '../../domain/entities/widget_shell_status.dart';
 import '../../domain/entities/widget_snapshot_summary.dart';
 import '../../domain/entities/widget_update_result.dart';
+import '../../domain/entities/widget_update_reason.dart';
 import '../../domain/repositories/widget_update_notifier.dart';
 import '../models/widget_snapshot_summary_model.dart';
 
@@ -22,7 +23,8 @@ class AndroidWidgetUpdateChannel implements WidgetUpdateNotifier {
        _isAndroidProvider = isAndroidProvider ?? _defaultIsRuntimeAndroid,
        _clock = clock;
 
-  static const _channelName = 'quota_analytics/android_widget';
+  static const channelName = 'quota_analytics/widget';
+  static const _channelName = channelName;
   static const _methodSaveSummary = 'saveQuotaWidgetSummary';
   static const _methodClearSummary = 'clearQuotaWidgetSummary';
   static const _methodUpdateWidgets = 'updateQuotaWidgets';
@@ -61,12 +63,22 @@ class AndroidWidgetUpdateChannel implements WidgetUpdateNotifier {
   }
 
   @override
-  Future<WidgetUpdateResult> updateWidgets() async {
+  Future<WidgetUpdateResult> updateWidgets({
+    String reason = WidgetUpdateReason.unspecified,
+  }) async {
     const operation = 'update_widgets';
     if (!_isAndroid) {
-      return _skipped(operation);
+      return _skipped(operation, reason: reason);
     }
-    return _invoke(operation: operation, method: _methodUpdateWidgets);
+    return _invoke(
+      operation: operation,
+      method: _methodUpdateWidgets,
+      reason: reason,
+      arguments: <String, Object?>{
+        'reason': reason,
+        'timestamp': _clock.now().toIso8601String(),
+      },
+    );
   }
 
   @override
@@ -97,24 +109,31 @@ class AndroidWidgetUpdateChannel implements WidgetUpdateNotifier {
   Future<WidgetUpdateResult> _invoke({
     required String operation,
     required String method,
+    String? reason,
     Object? arguments,
   }) async {
     final sentAt = _clock.now();
     try {
       await _channel.invokeMethod<void>(method, arguments);
-      return WidgetUpdateResult.success(operation: operation, sentAt: sentAt);
+      return WidgetUpdateResult.success(
+        operation: operation,
+        reason: reason,
+        sentAt: sentAt,
+      );
     } on Object catch (error) {
       return WidgetUpdateResult.failed(
         operation: operation,
+        reason: reason,
         sentAt: sentAt,
         safeError: _safeError(error),
       );
     }
   }
 
-  WidgetUpdateResult _skipped(String operation) {
+  WidgetUpdateResult _skipped(String operation, {String? reason}) {
     return WidgetUpdateResult.skipped(
       operation: operation,
+      reason: reason,
       sentAt: _clock.now(),
       safeError: 'non-Android platform',
     );
